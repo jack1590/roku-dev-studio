@@ -144,9 +144,14 @@ jobs:
         # in the `release` job below is the sole uploader. (Nulling out `build.publish` instead
         # of using `--publish never` also suppresses those YAML files entirely, breaking
         # electron-updater's runtime checkForUpdates() with an ENOENT — don't do that.)
+        # bash on every runner (Windows defaults to PowerShell). An empty CSC_LINK is read as a
+        # certificate path, so unset the signing vars when the secrets are missing.
         # Two `--`: the root script calls `npm --prefix apps/roku-dev-studio run …`, so the args must pass
         # through both npm layers to reach electron-builder. Empty on Windows, Linux and signed macOS.
-        run: npm run ${{ matrix.build-cmd }} -- -- $MAC_BUILD_ARGS
+        shell: bash
+        run: |
+          [ -n "$CSC_LINK" ] || unset CSC_LINK CSC_KEY_PASSWORD
+          npm run ${{ matrix.build-cmd }} -- -- ${MAC_BUILD_ARGS:-}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
