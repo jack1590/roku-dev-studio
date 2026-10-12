@@ -15932,6 +15932,7 @@
       text-align: center;
     }
   </style>
+  <link rel="stylesheet" href="pr-reviews.css">
 </head>
 <body>
   <!--
@@ -15981,6 +15982,16 @@
       >
         <span class="icon icon-sm titlebar-scan-icon"><svg><use href="#icon-radar"/></svg></span>
         <span class="titlebar-scan-text" data-i18n="app.scan">Scan</span>
+      </button>
+      <button
+        type="button"
+        class="titlebar-help-btn"
+        id="titlebarPrReviewsBtn"
+        title="PR Reviews"
+        aria-label="PR Reviews"
+      >
+        <span class="icon icon-sm"><svg><use href="#icon-git-pull-request"/></svg></span>
+        <span>PR Reviews</span>
       </button>
       <button
         type="button"
@@ -16437,6 +16448,9 @@
     <symbol id="icon-wifi-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="1" x2="23" y1="1" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" x2="12.01" y1="20" y2="20"/>
     </symbol>
+    <symbol id="icon-git-pull-request" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" x2="6" y1="9" y2="21"/>
+    </symbol>
     <symbol id="icon-loader" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="12" x2="12" y1="2" y2="6"/><line x1="12" x2="12" y1="18" y2="22"/><line x1="4.93" x2="7.76" y1="4.93" y2="7.76"/><line x1="16.24" x2="19.07" y1="16.24" y2="19.07"/><line x1="2" x2="6" y1="12" y2="12"/><line x1="18" x2="22" y1="12" y2="12"/><line x1="4.93" x2="7.76" y1="19.07" y2="16.24"/><line x1="16.24" x2="19.07" y1="7.76" y2="4.93"/>
     </symbol>
@@ -16494,6 +16508,10 @@
           <span class="icon icon-sm"><svg><use href="#icon-terminal"/></svg></span>
           <span data-i18n="app.viewLogs">View Logs</span>
         </button>
+        <button class="help-btn prr-sidebar-btn" id="sidebarPrReviewsBtn" title="Review pull requests from your projects' repos">
+          <span class="icon icon-sm"><svg><use href="#icon-git-pull-request"/></svg></span>
+          <span>PR Reviews</span>
+        </button>
         <button class="help-btn" id="helpBtn">
           <span class="icon icon-sm"><svg><use href="#icon-help"/></svg></span>
           <span data-i18n="app.helpAndGuide">Help & Guide</span>
@@ -16507,6 +16525,10 @@
       </div>
       
       <div class="tab-content-area" id="tabContentArea">
+        <div class="tab-panel prr-panel" id="prReviewsPanel" aria-label="PR Reviews">
+          <div class="prr-scroll"><div id="prReviewsRoot" class="prr-root"></div></div>
+          <div id="prReviewsDrawer" class="prr-drawer-layer" hidden></div>
+        </div>
         <div class="tab-panel active" id="welcomePanel">
           <div class="welcome-panel">
             <!-- Dev City Background - Roku City Inspired -->
@@ -16865,6 +16887,17 @@
               container queries on .welcome-panel — see the @container welcome rules.
             -->
             <div class="welcome-features">
+              <button type="button" class="welcome-feature prr-cta" id="welcomePrReviewsCta">
+                <div class="feature-header">
+                  <div class="feature-icon-wrapper indigo">
+                    <span class="icon"><svg><use href="#icon-git-pull-request"/></svg></span>
+                  </div>
+                  <div class="feature-title">PR Reviews</div>
+                  <span class="prr-cta-badge">New</span>
+                </div>
+                <div class="feature-desc">Pick a project's GitHub org, choose its repos, and review their pull requests.</div>
+                <span class="prr-cta-go" aria-hidden="true">Open →</span>
+              </button>
               <!-- Row 1 -->
               <div class="welcome-feature">
                 <div class="feature-header">

@@ -331,7 +331,7 @@ const state: BridgeState = {
 /** Devices with an open tab in the running Dev Studio — a filtered view of `knownDevices`, not a
  *  separately maintained list (both are pushed from the same renderer snapshot, so nothing can
  *  drift between them). */
-function connectedDevices(): DeviceSnapshot[] {
+export function connectedDevices(): DeviceSnapshot[] {
   return state.knownDevices.filter((d) => d.isTabOpen);
 }
 

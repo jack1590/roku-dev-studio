@@ -105,6 +105,18 @@ Roku Dev Studio can control devices over the internet using a remote server brid
 
 Full setup (running the server as a service, network/firewall configuration, the HTTP/WebSocket API, and Swagger docs) lives in the **[remote server package README](packages/roku-dev-studio-remote-server/README.md)**.
 
+## Projects and Tokens
+
+**Settings → Projects** adds a project for each company or team, with its own tokens., the GitHub token decides which repos are available: your own repos plus every org the token's account belongs to. Pick the repos to review in **PR Reviews** (sidebar, or the welcome screen). Tokens are encrypted with the OS keychain and never written to the repo or shown again.
+
+| Token | Where to create it | Scope / notes |
+|-------|--------------------|---------------|
+| GitHub | [github.com/settings/tokens](https://github.com/settings/tokens) | Classic personal access token with `repo` and `read:org`, or the output of `gh auth token`. Fine-grained tokens cover only one owner, so they cannot span orgs. Orgs with SAML SSO need the token authorized for SSO. |
+| JIRA | [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens) | API token. Set the JIRA site URL (`https://<your-site>.atlassian.net`) and the account email in the same row. |
+| Figma | [figma.com/developers/api#access-tokens](https://www.figma.com/developers/api#access-tokens) | Personal access token with only the `file_content:read` scope. Set a Figma file URL in the same row to test it. |
+
+Use **Test** on a row to check that the token and its settings work. For GitHub it reports the signed-in account, how many orgs and repos it can see, and any org it had to skip.
+
 ## Project structure
 
 ```

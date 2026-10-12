@@ -14,6 +14,7 @@ import {
   type NiSetupGuideStrings,
 } from '@shared/network-inspector/setup-guide.js';
 import { initSideloadRelaySection } from './sideload-relay-section.js';
+import { initProjectSection } from './project-section.js';
 import { openMcpToolsModal } from './mcp-tools-modal.js';
 import { attachBackdropClickToClose } from '../../modules/utils/modal-backdrop-click.js';
 import { animateHeight } from '../../modules/utils/dom.js';
@@ -1791,6 +1792,7 @@ function highlightSettingsRow(rowId: string): void {
 };
 
 try { initSideloadRelaySection(); } catch (e) {}
+try { initProjectSection(); } catch (e) {}
 
 if (INITIAL_SECTION) {
   try { selectSection(INITIAL_SECTION); } catch (e) {}

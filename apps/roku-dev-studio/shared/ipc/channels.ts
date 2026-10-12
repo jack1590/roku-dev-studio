@@ -622,7 +622,73 @@ export const IPC = {
   RceVideoOffer: 'rce:video-offer',
   /** Main → renderer: signaling lifecycle state (connecting/reconnecting/stopped/error) — not the
    *  actual media/ICE connection state, which only the renderer's RTCPeerConnection knows. */
-  RceVideoStatus: 'rce:video-status'
+  RceVideoStatus: 'rce:video-status',
+  /** Settings → Projects: list registered projects with config and token status. */
+  ProjectsList: 'projects:list',
+  /** Settings → Projects: add a GitHub org as a project (org login + optional JIRA site). */
+  ProjectsAdd: 'projects:add',
+  /** Settings → Projects: unregister a project and delete its stored tokens. */
+  ProjectsRemove: 'projects:remove',
+  /** Settings → Projects: change a project's org login or display name. Tokens stay with the project. */
+  ProjectsUpdate: 'projects:update',
+  /** Settings → Projects: save a project token (value goes in, only a boolean comes back). */
+  ProjectsSetToken: 'projects:set-token',
+  /** Settings → Projects: delete one project token. */
+  ProjectsClearToken: 'projects:clear-token',
+  /** Settings → Projects: save non-secret per-project fields (JIRA site/email, Figma test URL). */
+  ProjectsSetSettings: 'projects:set-settings',
+  /** Settings → Projects: test a service with its stored token (github | jira | figma). */
+  ProjectsTest: 'projects:test',
+  /** Settings → PR Reviews: list the org's repos with the stored GitHub token (names only, never the token). */
+  ProjectsScanRepos: 'projects:scan-repos',
+  /** Settings → PR Reviews: save which repos of the org are reviewed. */
+  ProjectsSetRepos: 'projects:set-repos',
+  /** PR Reviews: open PRs of the project's chosen repos, from GitHub (names and metadata only, never the token). */
+  ProjectsListPrs: 'projects:list-prs',
+  /** Settings → Projects: save the AI review section (models, instructions, device limits). */
+  ProjectsSetReview: 'projects:set-review',
+  /** Settings → Projects: Cursor models available to the project's Cursor key (ids and labels only). */
+  ProjectsListModels: 'projects:list-models',
+  /** Settings → Projects: which LLM Wiki pages a review of a repo would get (titles and reasons only). */
+  ProjectsWikiPreview: 'projects:wiki-preview',
+  /** Settings → Projects: tags used in the LLM Wiki, with page counts, for the tag picker. */
+  ProjectsWikiTags: 'projects:wiki-tags',
+  /** PR Reviews: queue an AI review of one PR (runs in the main process). */
+  ReviewsStart: 'reviews:start',
+  /** PR Reviews: cancel a queued or running review. */
+  ReviewsCancel: 'reviews:cancel',
+  /** PR Reviews: status of every reviewed or reviewing PR of a project. */
+  ReviewsList: 'reviews:list',
+  /** PR Reviews: the saved result of one PR's review. */
+  ReviewsGet: 'reviews:get',
+  /** PR Reviews: connected devices for the device picker (no passwords, only whether one is saved). */
+  ReviewsDevices: 'reviews:devices',
+  /** PR Reviews: verify a device's dev password against the device and save it in the app's store. */
+  ReviewsSetDevicePassword: 'reviews:set-device-password',
+  /** PR Reviews: find Rokus on the network the way the sidebar scan does (SSDP, then subnet). */
+  ReviewsDiscover: 'reviews:discover',
+  /** PR Reviews: replace the test device pool. Device runs take any free device from it. */
+  ReviewsSetPool: 'reviews:set-pool',
+  /** Main → every window: a review's status changed. */
+  ReviewsUpdate: 'reviews:update',
+  /** PR Reviews: one screenshot from a review's device run, as a data URL. */
+  ReviewsScreenshot: 'reviews:screenshot',
+  /** PR Reviews: save an edited comment (or the general comment) of a review; the original stays. */
+  ReviewsSaveComment: 'reviews:save-comment',
+  /** PR Reviews: post the chosen comments to GitHub, all at once or one by one with random gaps. */
+  ReviewsPost: 'reviews:post',
+  /** PR Reviews: edits, posted marks and any running posting queue of a review. */
+  ReviewsPostingState: 'reviews:posting-state',
+  /** Main → windows: progress of a posting run. */
+  ReviewsPostUpdate: 'reviews:post-update',
+  /** Settings → Projects: detect how a repo builds, from its base-branch files on GitHub. */
+  ProjectsBuildDetect: 'projects:build-detect',
+  /** Settings → Projects: approve and save a repo's build and install commands. */
+  ProjectsBuildSave: 'projects:build-save',
+  /** Settings → Projects: save a repo's build env (pasted .env content, encrypted; never returned). */
+  ProjectsBuildEnvSave: 'projects:build-env-save',
+  /** Settings → Projects: delete a repo's saved build env. */
+  ProjectsBuildEnvClear: 'projects:build-env-clear'
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

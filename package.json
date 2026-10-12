@@ -36,10 +36,11 @@
     "typecheck:mcp": "npm run typecheck -w roku-dev-studio-mcp",
     "typecheck:network-inspector": "npm run typecheck -w roku-dev-studio-network-inspector",
     "typecheck:rce": "npm run typecheck -w roku-dev-studio-rce",
+    "typecheck:review": "npm run typecheck -w roku-dev-studio-review",
     "typecheck:electron": "npm run typecheck:electron -w roku-dev-studio",
     "typecheck:renderer": "npm run typecheck:renderer -w roku-dev-studio",
     "typecheck:remote-server": "npm run typecheck -w roku-dev-studio-remote-server",
-    "typecheck": "npm run typecheck:platform && npm run typecheck:api && npm run typecheck:mcp && npm run typecheck:network-inspector && npm run typecheck:rce && npm run typecheck:electron && npm run typecheck:renderer && npm run typecheck:scripts -w roku-dev-studio && npm run typecheck:remote-server && npm run renderer:solid:typecheck -w roku-dev-studio",
+    "typecheck": "npm run typecheck:platform && npm run typecheck:api && npm run typecheck:mcp && npm run typecheck:network-inspector && npm run typecheck:rce && npm run typecheck:review && npm run typecheck:electron && npm run typecheck:renderer && npm run typecheck:scripts -w roku-dev-studio && npm run typecheck:remote-server && npm run renderer:solid:typecheck -w roku-dev-studio",
     "test": "npm test --workspaces --if-present"
   },
   "license": "MIT"

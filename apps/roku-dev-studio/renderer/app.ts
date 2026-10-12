@@ -48,6 +48,7 @@ import {
 import { initDeeplinkMediaTypes } from './modules/deeplink/deeplink-media-types.js';
 import { initDeeplinkPresets } from './modules/deeplink/deeplink-presets.js';
 import { setupDeepLinkPanel } from './modules/deeplink/deeplink-panel.js';
+import { initPrReviewsPanel } from './modules/pr-reviews/pr-reviews-panel.js';
 import {
   prepareModalOpenOrigin,
   playModalOpenMotion,
@@ -4088,6 +4089,33 @@ function showSectionTabTooltip(tab: HTMLElement) {
   tip.style.top = `${Math.round(rect.bottom + 6)}px`;
 }
 
+// App-level panels (PR Reviews) live beside the device tabs, not among them. While one is open
+// no device tab is active, so keyboard-remote shortcuts and the MCP bridge see no active device.
+let tabBeforeAppPanel: string | null = null;
+window.addEventListener('rds:app-panel-open', (event) => {
+  const panel = document.getElementById(String((event as CustomEvent).detail));
+  if (!panel) return;
+  if (state.activeTabId) tabBeforeAppPanel = state.activeTabId;
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.device-card').forEach(c => c.classList.remove('active'));
+  panel.classList.add('active');
+  state.activeTabId = null;
+  pushDeviceListToMcpBridge();
+});
+window.addEventListener('rds:app-panel-close', () => {
+  const previous = tabBeforeAppPanel && document.getElementById(tabBeforeAppPanel) ? tabBeforeAppPanel : null;
+  const fallback = Array.from(state.connectedDevices.values())[0]?.tabId ?? null;
+  tabBeforeAppPanel = null;
+  const target = previous ?? fallback;
+  if (target) {
+    activateTab(target);
+  } else {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    elements.welcomePanel.classList.add('active');
+  }
+});
+
 function activateTab(tabId) {
   // Deactivate all tabs
   document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
@@ -8013,6 +8041,7 @@ async function init() {
   if (initialDeviceCount) initialDeviceCount.textContent = S.app.deviceCount(0);
   await initDeeplinkMediaTypes();
   await initDeeplinkPresets();
+  initPrReviewsPanel();
   setupKeyboardRemoteHelpModal();
   setupChartInfoModal();
 

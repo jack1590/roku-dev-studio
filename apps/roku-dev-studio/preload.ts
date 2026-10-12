@@ -1201,3 +1201,37 @@ contextBridge.exposeInMainWorld('rdsUpdater', {
     return () => ipcRenderer.removeListener(IPC.UpdaterStatus, handler);
   }
 });
+
+// PR Reviews panel (main window). Read-only project info and repo choices; tokens never cross.
+contextBridge.exposeInMainWorld('rdsProjects', {
+  list: () => ipcRenderer.invoke(IPC.ProjectsList),
+  scanRepos: (id: string) => ipcRenderer.invoke(IPC.ProjectsScanRepos, { id }),
+  setRepos: (id: string, repos: string[]) => ipcRenderer.invoke(IPC.ProjectsSetRepos, { id, repos }),
+  listPrs: (id: string) => ipcRenderer.invoke(IPC.ProjectsListPrs, { id })
+});
+
+// PR Reviews: AI reviews run in the main process; the window only starts, watches and reads them.
+contextBridge.exposeInMainWorld('rdsReviews', {
+  start: (input: { projectId: string; repo: string; number: number }) => ipcRenderer.invoke(IPC.ReviewsStart, input),
+  cancel: (input: { projectId: string; repo: string; number: number }) => ipcRenderer.invoke(IPC.ReviewsCancel, input),
+  list: (projectId: string) => ipcRenderer.invoke(IPC.ReviewsList, { projectId }),
+  get: (input: { projectId: string; repo: string; number: number }) => ipcRenderer.invoke(IPC.ReviewsGet, input),
+  devices: () => ipcRenderer.invoke(IPC.ReviewsDevices),
+  setDevicePassword: (input: { key: string; ip: string; password: string }) => ipcRenderer.invoke(IPC.ReviewsSetDevicePassword, input),
+  discover: () => ipcRenderer.invoke(IPC.ReviewsDiscover),
+  setPool: (devices: { key: string; ip: string; name: string; model?: string }[]) => ipcRenderer.invoke(IPC.ReviewsSetPool, { devices }),
+  screenshot: (input: { projectId: string; repo: string; number: number; name: string }) => ipcRenderer.invoke(IPC.ReviewsScreenshot, input),
+  postingState: (input: { projectId: string; repo: string; number: number }) => ipcRenderer.invoke(IPC.ReviewsPostingState, input),
+  saveComment: (input: { projectId: string; repo: string; number: number; id: string; text: string | null }) => ipcRenderer.invoke(IPC.ReviewsSaveComment, input),
+  post: (input: { projectId: string; repo: string; number: number; ids: string[]; general: string | null; spaced: boolean; maxMinutes: number }) => ipcRenderer.invoke(IPC.ReviewsPost, input),
+  onPostUpdate: (callback: (update: unknown) => void) => {
+    const handler = (_e: IpcRendererEvent, update: unknown) => callback(update);
+    ipcRenderer.on(IPC.ReviewsPostUpdate, handler);
+    return () => ipcRenderer.removeListener(IPC.ReviewsPostUpdate, handler);
+  },
+  onUpdate: (callback: (summary: unknown) => void) => {
+    const handler = (_e: IpcRendererEvent, summary: unknown) => callback(summary);
+    ipcRenderer.on(IPC.ReviewsUpdate, handler);
+    return () => ipcRenderer.removeListener(IPC.ReviewsUpdate, handler);
+  }
+});

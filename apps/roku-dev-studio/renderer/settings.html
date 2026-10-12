@@ -24,6 +24,7 @@
   <div class="settings-main">
     <nav class="settings-nav" role="tablist" aria-label="Settings sections" data-i18n-aria-label="settings.navAria">
       <button type="button" class="settings-nav-item active" role="tab" aria-selected="true" data-target="general" id="nav-general" data-i18n="settings.tabGeneral">General</button>
+      <button type="button" class="settings-nav-item" role="tab" aria-selected="false" data-target="projects" id="nav-projects">Projects</button>
       <button type="button" class="settings-nav-item" role="tab" aria-selected="false" data-target="action-scripts" id="nav-action-scripts" data-i18n="settings.tabActionScripts">Action Scripts</button>
       <button type="button" class="settings-nav-item" role="tab" aria-selected="false" data-target="device-performance" id="nav-device-performance" data-i18n="settings.tabDevicePerformance">Device Performance</button>
       <button type="button" class="settings-nav-item" role="tab" aria-selected="false" data-target="timing" id="nav-timing" data-i18n="settings.tabTiming">Timing &amp; Network</button>
@@ -142,6 +143,14 @@
             <button type="button" class="btn-timing-reset" id="btnResetGeneral" data-i18n="settings.resetToDefaults">Reset to Defaults</button>
             <span class="section-save-status" id="saveStatusGeneral" aria-live="polite"></span>
             <button type="button" class="btn btn-primary" id="btnSaveGeneral" data-i18n="common.save">Save</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-panel" data-section="projects" id="panel-projects" role="tabpanel" aria-labelledby="nav-projects" aria-hidden="true">
+        <div class="settings-panel-fill">
+          <div class="settings-panel-scroll">
+            <p class="help-blurb">Add a project for each company or team. Its GitHub token decides which repos you can review: your own plus every org the token belongs to. Tokens stay on this machine, encrypted with the OS keychain.</p>
+            <div id="projectsRoot" class="projects-root"></div>
           </div>
         </div>
       </div>

@@ -20,7 +20,10 @@ export const MAIN_EXTERNAL = [
   // runtime require(); must stay external so esbuild doesn't try to bundle its .node binary.
   'cap',
   // Zip reader for scanning sideloaded .brs source for STOP statements (debugger breakpoints).
-  'adm-zip'
+  'adm-zip',
+  // PR review pipeline: the Cursor SDK ships per-platform native binaries, so it is required at
+  // runtime instead of bundled (see packages/roku-review).
+  '@cursor/sdk'
 ];
 
 /** Preload bundles, all sharing the same `['electron']` external. `[entry.ts, outfile]`. */

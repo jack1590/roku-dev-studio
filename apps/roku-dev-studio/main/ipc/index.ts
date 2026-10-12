@@ -14,6 +14,8 @@ import { setupRelayHandlers } from './relay-handlers';
 import { setupDebuggerHandlers } from './debugger-handlers';
 import { setupRceHandlers } from './rce-handlers';
 import { setupRceVideoHandlers } from './rce-video-handlers';
+import { setupProjectHandlers } from './project-handlers';
+import { setupReviewHandlers } from '../review/review-service';
 import { cleanupStaleTempFiles } from '../startup-temp-cleanup';
 
 type AppWindowState = {
@@ -58,6 +60,8 @@ function setupIpcHandlers(
   setupDebuggerHandlers(mainWindow);
   setupRceHandlers();
   setupRceVideoHandlers();
+  setupProjectHandlers(app);
+  setupReviewHandlers(app);
 }
 
 export { setupIpcHandlers };

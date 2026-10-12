@@ -99,5 +99,26 @@ contextBridge.exposeInMainWorld('settingsApi', {
     const handler = (_e: IpcRendererEvent, result: unknown) => callback(result);
     ipcRenderer.on(IPC.SideloadRelayResult, handler);
     return () => ipcRenderer.removeListener(IPC.SideloadRelayResult, handler);
-  }
+  },
+  // Projects: tokens are write-only from the renderer. Only booleans come back.
+  projectsList: () => ipcRenderer.invoke(IPC.ProjectsList),
+  projectsAdd: (input: { name: string }) => ipcRenderer.invoke(IPC.ProjectsAdd, input),
+  projectsRemove: (id: string) => ipcRenderer.invoke(IPC.ProjectsRemove, { id }),
+  projectsUpdate: (input: { id: string; name: string }) => ipcRenderer.invoke(IPC.ProjectsUpdate, input),
+  projectsSetToken: (id: string, service: string, value: string) =>
+    ipcRenderer.invoke(IPC.ProjectsSetToken, { id, service, value }),
+  projectsClearToken: (id: string, service: string) => ipcRenderer.invoke(IPC.ProjectsClearToken, { id, service }),
+  projectsSetSettings: (input: { id: string; jiraSite?: string; jiraEmail?: string; figmaTestUrl?: string }) =>
+    ipcRenderer.invoke(IPC.ProjectsSetSettings, input),
+  projectsTest: (id: string, service: string) => ipcRenderer.invoke(IPC.ProjectsTest, { id, service }),
+  projectsSetReview: (input: { id: string; models: Record<string, string>; reviewInstructions: string; probeRounds: number; deviceMinutes: number }) =>
+    ipcRenderer.invoke(IPC.ProjectsSetReview, input),
+  projectsListModels: (id: string) => ipcRenderer.invoke(IPC.ProjectsListModels, { id }),
+  projectsWikiPreview: (input: { id: string; repo: string; wikiEnabled: boolean; wikiDir: string; wikiTags: string; wikiCompanyTag: string }) =>
+    ipcRenderer.invoke(IPC.ProjectsWikiPreview, input),
+  projectsWikiTags: (wikiDir: string) => ipcRenderer.invoke(IPC.ProjectsWikiTags, { wikiDir }),
+  projectsBuildDetect: (id: string, repo: string, root?: string) => ipcRenderer.invoke(IPC.ProjectsBuildDetect, { id, repo, root }),
+  projectsBuildSave: (input: { id: string; repo: string; command: string; outDir: string; install: string; rootDir?: string; testCommand?: string; testOutDir?: string; detectedFrom?: string }) => ipcRenderer.invoke(IPC.ProjectsBuildSave, input),
+  projectsBuildEnvSave: (id: string, repo: string, text: string) => ipcRenderer.invoke(IPC.ProjectsBuildEnvSave, { id, repo, text }),
+  projectsBuildEnvClear: (id: string, repo: string) => ipcRenderer.invoke(IPC.ProjectsBuildEnvClear, { id, repo })
 });

@@ -28,6 +28,7 @@
     "verify:artifact-names": "tsx scripts/verify-artifact-names.ts",
     "verify:auto-connect-store": "tsx scripts/verify-auto-connect-store.ts",
     "verify:doc-versions": "tsx scripts/verify-doc-versions.ts",
+    "verify:project-config": "tsx scripts/verify-project-config.ts",
     "verify:updater-errors": "tsx scripts/verify-updater-errors.ts",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "dev:solid": "tsx scripts/build/index.ts && concurrently -k \"npm run renderer:solid:dev\" \"wait-on tcp:127.0.0.1:5173 && cross-env RDS_SOLID_RENDERER=1 tsx scripts/run-electron.ts\"",
@@ -55,6 +56,7 @@
   "company": "Paramount Streaming",
   "license": "MIT",
   "dependencies": {
+    "@cursor/sdk": "1.0.37",
     "@tanstack/virtual-core": "^3.17.8",
     "adm-zip": "^0.6.1",
     "brighterscript": "^0.73.0",
@@ -138,6 +140,7 @@
     ],
     "asarUnpack": [
       "**/node_modules/cap/**",
+      "**/node_modules/@cursor/**",
       "network-session-parse.worker.js",
       "leaf-cert.worker.js"
     ],

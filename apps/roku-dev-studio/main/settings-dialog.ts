@@ -39,8 +39,8 @@ function showSettingsDialog(mainWindow: BrowserWindow, initialSection?: string, 
   }
 
   const settingsWindow = new BrowserWindowConstructor({
-    width: 820,
-    height: 780,
+    width: 1080,
+    height: 860,
     minWidth: 640,
     minHeight: 580,
     resizable: true,

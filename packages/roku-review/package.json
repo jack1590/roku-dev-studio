@@ -1,0 +1,22 @@
+{
+  "name": "roku-dev-studio-review",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Roku-focused AI pull request review pipeline. Runs in the Electron main process (or headless later); never in the renderer.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "verify": "tsx verify-wiki.ts && tsx verify-review.ts"
+  },
+  "dependencies": {
+    "@cursor/sdk": "1.0.37",
+    "adm-zip": "^0.6.1",
+    "roku-dev-studio-api": "*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.3",
+    "typescript": "5.9.3"
+  }
+}
