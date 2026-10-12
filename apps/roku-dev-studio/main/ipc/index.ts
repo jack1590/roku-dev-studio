@@ -16,6 +16,7 @@ import { setupRceHandlers } from './rce-handlers';
 import { setupRceVideoHandlers } from './rce-video-handlers';
 import { setupProjectHandlers } from './project-handlers';
 import { setupReviewHandlers } from '../review/review-service';
+import { setupPackagerHandlers } from '../packager/packager-service';
 import { cleanupStaleTempFiles } from '../startup-temp-cleanup';
 
 type AppWindowState = {
@@ -62,6 +63,7 @@ function setupIpcHandlers(
   setupRceVideoHandlers();
   setupProjectHandlers(app);
   setupReviewHandlers(app);
+  setupPackagerHandlers(app);
 }
 
 export { setupIpcHandlers };

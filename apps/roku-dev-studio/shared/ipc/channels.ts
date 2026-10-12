@@ -688,7 +688,31 @@ export const IPC = {
   /** Settings → Projects: save a repo's build env (pasted .env content, encrypted; never returned). */
   ProjectsBuildEnvSave: 'projects:build-env-save',
   /** Settings → Projects: delete a repo's saved build env. */
-  ProjectsBuildEnvClear: 'projects:build-env-clear'
+  ProjectsBuildEnvClear: 'projects:build-env-clear',
+  /** Packager: is roku-pkg installed, and new enough (≥ 1.2.0)? */
+  PackagerStatus: 'packager:status',
+  /** Packager: projects from ~/.roku-pkg/config.json (sign keys masked), history and live runs. */
+  PackagerList: 'packager:list',
+  /** Packager: what roku-pkg detects in an app folder (manifest, build folder, tasks). */
+  PackagerInspect: 'packager:inspect',
+  /** Packager: add or edit a project. An empty sign key keeps the saved one. */
+  PackagerSave: 'packager:save',
+  /** Packager: remove a project from the roku-pkg config. */
+  PackagerRemove: 'packager:remove',
+  /** Packager: native folder / .pkg / save dialogs, opened by main. */
+  PackagerPick: 'packager:pick',
+  /** Packager: pool devices plus roku-pkg's own device (no passwords). */
+  PackagerDevices: 'packager:devices',
+  /** Packager: start `roku-pkg generate --json` for one project on one device. */
+  PackagerGenerate: 'packager:generate',
+  /** Packager: stop a run (the CLI cleans up and reports CANCELLED). */
+  PackagerCancel: 'packager:cancel',
+  /** Packager: show a generated package in Finder (only paths from run results). */
+  PackagerReveal: 'packager:reveal',
+  /** Packager: copy a generated package path to the clipboard. */
+  PackagerCopyPath: 'packager:copy-path',
+  /** Main → windows: a run's state changed. */
+  PackagerUpdate: 'packager:update'
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

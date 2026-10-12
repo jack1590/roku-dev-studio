@@ -18,6 +18,7 @@ import * as tokenStore from '../project-token-store';
 import { connectedDevices } from '../mcp-bridge';
 import { isRelaySelfDevice } from '../sideload-relay/fake-device-info';
 import { setupPostingHandlers } from './review-posting';
+import { busyLabel, tryClaim } from '../../shared/device-claims';
 
 const fs = require('fs');
 const path = require('path');
@@ -189,6 +190,35 @@ async function acquireDevice(job: Job): Promise<{ device: PoolDevice; password: 
 function releaseDevice(deviceKey: string): void {
   busy.delete(deviceKey);
   wakePool();
+}
+
+/** Who holds a device, for pickers: "owner/repo#n" for a review, "Packaging <name>" for a package run. */
+function holderLabel(holder: string | undefined): string | undefined {
+  if (!holder) return undefined;
+  const job = jobs.get(holder);
+  return job ? `${job.repo}#${job.number}` : busyLabel(holder);
+}
+
+/** Packager: take a specific pool device. Fails instead of queueing; the person picked this device. */
+export function claimPoolDevice(key: string, holder: string): { ok: true; ip: string; name: string; password: string } | { ok: false; error: string } {
+  const device = pool.find((d) => d.key === key);
+  if (!device) return { ok: false, error: 'That device is no longer in the device pool.' };
+  const password = secretStore.getAllPasswords()[key];
+  if (!password) return { ok: false, error: `No dev password saved for ${device.name}. Set it in PR Reviews → Test devices.` };
+  const holderNow = busy.get(key);
+  if (!tryClaim(busy, key, holder)) return { ok: false, error: `${device.name} is busy (${holderLabel(holderNow) ?? 'in use'}).` };
+  return { ok: true, ip: device.ip, name: device.name, password };
+}
+
+export function releasePoolDevice(key: string): void {
+  releaseDevice(key);
+}
+
+/** Same view as the PR Reviews device picker; passwords never leave main. */
+export async function listPoolDevices(): Promise<{ key: string; ip: string; name: string; model?: string; online: boolean; hasPassword: boolean; busyWith?: string }[]> {
+  const passwords = secretStore.getAllPasswords();
+  const online = await Promise.all(pool.map((d) => (busy.has(d.key) ? Promise.resolve(true) : isOnline(d))));
+  return pool.map((d, i) => ({ key: d.key, ip: d.ip, name: d.name, model: d.model, online: online[i], hasPassword: !!passwords[d.key], busyWith: holderLabel(busy.get(d.key)) }));
 }
 
 function resultPath(projectId: string, repo: string, number: number): string {
@@ -546,11 +576,7 @@ function setupReviewHandlers(app: App): void {
   ipcMain.handle(IPC.ReviewsDevices, async () => {
     const passwords = secretStore.getAllPasswords();
     const online = await Promise.all(pool.map((d) => (busy.has(d.key) ? Promise.resolve(true) : isOnline(d))));
-    const devices = pool.map((d, i) => {
-      const holder = busy.get(d.key);
-      const job = holder ? jobs.get(holder) : undefined;
-      return { ...d, hasPassword: !!passwords[d.key], busyWith: job ? `${job.repo}#${job.number}` : undefined, online: online[i], lastSeen: reachability.get(d.key)?.lastSeen };
-    });
+    const devices = pool.map((d, i) => ({ ...d, hasPassword: !!passwords[d.key], busyWith: holderLabel(busy.get(d.key)), online: online[i], lastSeen: reachability.get(d.key)?.lastSeen }));
     return { success: true, devices, waiting: waitingForDevice.length };
   });
 

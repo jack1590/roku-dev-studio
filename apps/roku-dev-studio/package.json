@@ -29,6 +29,9 @@
     "verify:auto-connect-store": "tsx scripts/verify-auto-connect-store.ts",
     "verify:doc-versions": "tsx scripts/verify-doc-versions.ts",
     "verify:project-config": "tsx scripts/verify-project-config.ts",
+    "verify:packager": "tsx scripts/verify-packager.ts",
+    "verify:device-claims": "tsx scripts/verify-device-claims.ts",
+    "verify:packager-runner": "tsx scripts/verify-packager-runner.ts",
     "verify:updater-errors": "tsx scripts/verify-updater-errors.ts",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "dev:solid": "tsx scripts/build/index.ts && concurrently -k \"npm run renderer:solid:dev\" \"wait-on tcp:127.0.0.1:5173 && cross-env RDS_SOLID_RENDERER=1 tsx scripts/run-electron.ts\"",
@@ -70,6 +73,7 @@
     "roku-dev-studio-mcp": "file:../../packages/roku-dev-studio-mcp",
     "roku-dev-studio-platform": "file:../../packages/roku-dev-studio-platform",
     "roku-dev-studio-rce": "file:../../packages/roku-dev-studio-rce",
+    "roku-pkg-cli": "^1.2.1",
     "solid-js": "^1.9.14",
     "ws": "^8.21.0"
   },
@@ -147,14 +151,26 @@
     "compression": "maximum",
     "fileAssociations": [
       {
-        "ext": ["log", "txt", "text", "out", "err", "trace"],
+        "ext": [
+          "log",
+          "txt",
+          "text",
+          "out",
+          "err",
+          "trace"
+        ],
         "name": "Log File",
         "description": "Console / log text file",
         "role": "Viewer",
         "rank": "Alternate"
       },
       {
-        "ext": ["rds-network-inspector.json", "har", "pcap", "pcapng"],
+        "ext": [
+          "rds-network-inspector.json",
+          "har",
+          "pcap",
+          "pcapng"
+        ],
         "name": "Network Session",
         "description": "Roku Dev Studio network capture session",
         "role": "Viewer",

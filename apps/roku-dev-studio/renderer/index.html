@@ -15933,6 +15933,7 @@
     }
   </style>
   <link rel="stylesheet" href="pr-reviews.css">
+  <link rel="stylesheet" href="packager.css">
 </head>
 <body>
   <!--
@@ -15992,6 +15993,16 @@
       >
         <span class="icon icon-sm"><svg><use href="#icon-git-pull-request"/></svg></span>
         <span>PR Reviews</span>
+      </button>
+      <button
+        type="button"
+        class="titlebar-help-btn"
+        id="titlebarPackagerBtn"
+        title="Packager"
+        aria-label="Packager"
+      >
+        <span class="icon icon-sm"><svg><use href="#icon-package"/></svg></span>
+        <span>Packager</span>
       </button>
       <button
         type="button"
@@ -16512,6 +16523,10 @@
           <span class="icon icon-sm"><svg><use href="#icon-git-pull-request"/></svg></span>
           <span>PR Reviews</span>
         </button>
+        <button class="help-btn prr-sidebar-btn" id="sidebarPackagerBtn" title="Build and sign .pkg files for your Roku projects">
+          <span class="icon icon-sm"><svg><use href="#icon-package"/></svg></span>
+          <span>Packager</span>
+        </button>
         <button class="help-btn" id="helpBtn">
           <span class="icon icon-sm"><svg><use href="#icon-help"/></svg></span>
           <span data-i18n="app.helpAndGuide">Help & Guide</span>
@@ -16528,6 +16543,10 @@
         <div class="tab-panel prr-panel" id="prReviewsPanel" aria-label="PR Reviews">
           <div class="prr-scroll"><div id="prReviewsRoot" class="prr-root"></div></div>
           <div id="prReviewsDrawer" class="prr-drawer-layer" hidden></div>
+        </div>
+        <div class="tab-panel pkg-panel" id="packagerPanel" aria-label="Packager">
+          <div id="packagerRoot" class="pkg-root"></div>
+          <div id="packagerDrawer" class="prr-drawer-layer" hidden></div>
         </div>
         <div class="tab-panel active" id="welcomePanel">
           <div class="welcome-panel">
@@ -16896,6 +16915,17 @@
                   <span class="prr-cta-badge">New</span>
                 </div>
                 <div class="feature-desc">Pick a project's GitHub org, choose its repos, and review their pull requests.</div>
+                <span class="prr-cta-go" aria-hidden="true">Open →</span>
+              </button>
+              <button type="button" class="welcome-feature prr-cta" id="welcomePackagerCta">
+                <div class="feature-header">
+                  <div class="feature-icon-wrapper indigo">
+                    <span class="icon"><svg><use href="#icon-package"/></svg></span>
+                  </div>
+                  <div class="feature-title">Packager</div>
+                  <span class="prr-cta-badge">New</span>
+                </div>
+                <div class="feature-desc">Build and sign .pkg files for your Roku projects on any of your devices.</div>
                 <span class="prr-cta-go" aria-hidden="true">Open →</span>
               </button>
               <!-- Row 1 -->

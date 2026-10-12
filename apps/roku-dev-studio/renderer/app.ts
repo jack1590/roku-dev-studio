@@ -49,6 +49,7 @@ import { initDeeplinkMediaTypes } from './modules/deeplink/deeplink-media-types.
 import { initDeeplinkPresets } from './modules/deeplink/deeplink-presets.js';
 import { setupDeepLinkPanel } from './modules/deeplink/deeplink-panel.js';
 import { initPrReviewsPanel } from './modules/pr-reviews/pr-reviews-panel.js';
+import { initPackagerPanel } from './modules/packager/packager-panel.js';
 import {
   prepareModalOpenOrigin,
   playModalOpenMotion,
@@ -8042,6 +8043,7 @@ async function init() {
   await initDeeplinkMediaTypes();
   await initDeeplinkPresets();
   initPrReviewsPanel();
+initPackagerPanel();
   setupKeyboardRemoteHelpModal();
   setupChartInfoModal();
 

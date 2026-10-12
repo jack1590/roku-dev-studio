@@ -1235,3 +1235,23 @@ contextBridge.exposeInMainWorld('rdsReviews', {
     return () => ipcRenderer.removeListener(IPC.ReviewsUpdate, handler);
   }
 });
+
+// Packager: roku-pkg runs in the main process; sign keys and passwords never cross.
+contextBridge.exposeInMainWorld('rdsPackager', {
+  status: (refresh?: boolean) => ipcRenderer.invoke(IPC.PackagerStatus, { refresh: refresh === true }),
+  list: () => ipcRenderer.invoke(IPC.PackagerList),
+  inspect: (rootDir: string) => ipcRenderer.invoke(IPC.PackagerInspect, rootDir),
+  save: (input: unknown) => ipcRenderer.invoke(IPC.PackagerSave, input),
+  remove: (name: string) => ipcRenderer.invoke(IPC.PackagerRemove, name),
+  pick: (input: { kind: 'folder' | 'pkg' | 'save'; defaultPath?: string }) => ipcRenderer.invoke(IPC.PackagerPick, input),
+  devices: () => ipcRenderer.invoke(IPC.PackagerDevices),
+  generate: (input: unknown) => ipcRenderer.invoke(IPC.PackagerGenerate, input),
+  cancel: (runId: string) => ipcRenderer.invoke(IPC.PackagerCancel, runId),
+  reveal: (p: string) => ipcRenderer.invoke(IPC.PackagerReveal, p),
+  copyPath: (p: string) => ipcRenderer.invoke(IPC.PackagerCopyPath, p),
+  onUpdate: (callback: (state: unknown) => void) => {
+    const handler = (_e: IpcRendererEvent, state: unknown) => callback(state);
+    ipcRenderer.on(IPC.PackagerUpdate, handler);
+    return () => ipcRenderer.removeListener(IPC.PackagerUpdate, handler);
+  }
+});

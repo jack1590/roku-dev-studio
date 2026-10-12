@@ -651,7 +651,97 @@ var init_channels = __esm({
       RceVideoOffer: "rce:video-offer",
       /** Main → renderer: signaling lifecycle state (connecting/reconnecting/stopped/error) — not the
        *  actual media/ICE connection state, which only the renderer's RTCPeerConnection knows. */
-      RceVideoStatus: "rce:video-status"
+      RceVideoStatus: "rce:video-status",
+      /** Settings → Projects: list registered projects with config and token status. */
+      ProjectsList: "projects:list",
+      /** Settings → Projects: add a GitHub org as a project (org login + optional JIRA site). */
+      ProjectsAdd: "projects:add",
+      /** Settings → Projects: unregister a project and delete its stored tokens. */
+      ProjectsRemove: "projects:remove",
+      /** Settings → Projects: change a project's org login or display name. Tokens stay with the project. */
+      ProjectsUpdate: "projects:update",
+      /** Settings → Projects: save a project token (value goes in, only a boolean comes back). */
+      ProjectsSetToken: "projects:set-token",
+      /** Settings → Projects: delete one project token. */
+      ProjectsClearToken: "projects:clear-token",
+      /** Settings → Projects: save non-secret per-project fields (JIRA site/email, Figma test URL). */
+      ProjectsSetSettings: "projects:set-settings",
+      /** Settings → Projects: test a service with its stored token (github | jira | figma). */
+      ProjectsTest: "projects:test",
+      /** Settings → PR Reviews: list the org's repos with the stored GitHub token (names only, never the token). */
+      ProjectsScanRepos: "projects:scan-repos",
+      /** Settings → PR Reviews: save which repos of the org are reviewed. */
+      ProjectsSetRepos: "projects:set-repos",
+      /** PR Reviews: open PRs of the project's chosen repos, from GitHub (names and metadata only, never the token). */
+      ProjectsListPrs: "projects:list-prs",
+      /** Settings → Projects: save the AI review section (models, instructions, device limits). */
+      ProjectsSetReview: "projects:set-review",
+      /** Settings → Projects: Cursor models available to the project's Cursor key (ids and labels only). */
+      ProjectsListModels: "projects:list-models",
+      /** Settings → Projects: which LLM Wiki pages a review of a repo would get (titles and reasons only). */
+      ProjectsWikiPreview: "projects:wiki-preview",
+      /** Settings → Projects: tags used in the LLM Wiki, with page counts, for the tag picker. */
+      ProjectsWikiTags: "projects:wiki-tags",
+      /** PR Reviews: queue an AI review of one PR (runs in the main process). */
+      ReviewsStart: "reviews:start",
+      /** PR Reviews: cancel a queued or running review. */
+      ReviewsCancel: "reviews:cancel",
+      /** PR Reviews: status of every reviewed or reviewing PR of a project. */
+      ReviewsList: "reviews:list",
+      /** PR Reviews: the saved result of one PR's review. */
+      ReviewsGet: "reviews:get",
+      /** PR Reviews: connected devices for the device picker (no passwords, only whether one is saved). */
+      ReviewsDevices: "reviews:devices",
+      /** PR Reviews: verify a device's dev password against the device and save it in the app's store. */
+      ReviewsSetDevicePassword: "reviews:set-device-password",
+      /** PR Reviews: find Rokus on the network the way the sidebar scan does (SSDP, then subnet). */
+      ReviewsDiscover: "reviews:discover",
+      /** PR Reviews: replace the test device pool. Device runs take any free device from it. */
+      ReviewsSetPool: "reviews:set-pool",
+      /** Main → every window: a review's status changed. */
+      ReviewsUpdate: "reviews:update",
+      /** PR Reviews: one screenshot from a review's device run, as a data URL. */
+      ReviewsScreenshot: "reviews:screenshot",
+      /** PR Reviews: save an edited comment (or the general comment) of a review; the original stays. */
+      ReviewsSaveComment: "reviews:save-comment",
+      /** PR Reviews: post the chosen comments to GitHub, all at once or one by one with random gaps. */
+      ReviewsPost: "reviews:post",
+      /** PR Reviews: edits, posted marks and any running posting queue of a review. */
+      ReviewsPostingState: "reviews:posting-state",
+      /** Main → windows: progress of a posting run. */
+      ReviewsPostUpdate: "reviews:post-update",
+      /** Settings → Projects: detect how a repo builds, from its base-branch files on GitHub. */
+      ProjectsBuildDetect: "projects:build-detect",
+      /** Settings → Projects: approve and save a repo's build and install commands. */
+      ProjectsBuildSave: "projects:build-save",
+      /** Settings → Projects: save a repo's build env (pasted .env content, encrypted; never returned). */
+      ProjectsBuildEnvSave: "projects:build-env-save",
+      /** Settings → Projects: delete a repo's saved build env. */
+      ProjectsBuildEnvClear: "projects:build-env-clear",
+      /** Packager: is roku-pkg installed, and new enough (≥ 1.2.0)? */
+      PackagerStatus: "packager:status",
+      /** Packager: projects from ~/.roku-pkg/config.json (sign keys masked), history and live runs. */
+      PackagerList: "packager:list",
+      /** Packager: what roku-pkg detects in an app folder (manifest, build folder, tasks). */
+      PackagerInspect: "packager:inspect",
+      /** Packager: add or edit a project. An empty sign key keeps the saved one. */
+      PackagerSave: "packager:save",
+      /** Packager: remove a project from the roku-pkg config. */
+      PackagerRemove: "packager:remove",
+      /** Packager: native folder / .pkg / save dialogs, opened by main. */
+      PackagerPick: "packager:pick",
+      /** Packager: pool devices plus roku-pkg's own device (no passwords). */
+      PackagerDevices: "packager:devices",
+      /** Packager: start `roku-pkg generate --json` for one project on one device. */
+      PackagerGenerate: "packager:generate",
+      /** Packager: stop a run (the CLI cleans up and reports CANCELLED). */
+      PackagerCancel: "packager:cancel",
+      /** Packager: show a generated package in Finder (only paths from run results). */
+      PackagerReveal: "packager:reveal",
+      /** Packager: copy a generated package path to the clipboard. */
+      PackagerCopyPath: "packager:copy-path",
+      /** Main → windows: a run's state changed. */
+      PackagerUpdate: "packager:update"
     };
   }
 });
@@ -737,5 +827,22 @@ contextBridge.exposeInMainWorld("settingsApi", {
     const handler = (_e, result) => callback(result);
     ipcRenderer.on(IPC2.SideloadRelayResult, handler);
     return () => ipcRenderer.removeListener(IPC2.SideloadRelayResult, handler);
-  }
+  },
+  // Projects: tokens are write-only from the renderer. Only booleans come back.
+  projectsList: () => ipcRenderer.invoke(IPC2.ProjectsList),
+  projectsAdd: (input) => ipcRenderer.invoke(IPC2.ProjectsAdd, input),
+  projectsRemove: (id) => ipcRenderer.invoke(IPC2.ProjectsRemove, { id }),
+  projectsUpdate: (input) => ipcRenderer.invoke(IPC2.ProjectsUpdate, input),
+  projectsSetToken: (id, service, value) => ipcRenderer.invoke(IPC2.ProjectsSetToken, { id, service, value }),
+  projectsClearToken: (id, service) => ipcRenderer.invoke(IPC2.ProjectsClearToken, { id, service }),
+  projectsSetSettings: (input) => ipcRenderer.invoke(IPC2.ProjectsSetSettings, input),
+  projectsTest: (id, service) => ipcRenderer.invoke(IPC2.ProjectsTest, { id, service }),
+  projectsSetReview: (input) => ipcRenderer.invoke(IPC2.ProjectsSetReview, input),
+  projectsListModels: (id) => ipcRenderer.invoke(IPC2.ProjectsListModels, { id }),
+  projectsWikiPreview: (input) => ipcRenderer.invoke(IPC2.ProjectsWikiPreview, input),
+  projectsWikiTags: (wikiDir) => ipcRenderer.invoke(IPC2.ProjectsWikiTags, { wikiDir }),
+  projectsBuildDetect: (id, repo, root) => ipcRenderer.invoke(IPC2.ProjectsBuildDetect, { id, repo, root }),
+  projectsBuildSave: (input) => ipcRenderer.invoke(IPC2.ProjectsBuildSave, input),
+  projectsBuildEnvSave: (id, repo, text) => ipcRenderer.invoke(IPC2.ProjectsBuildEnvSave, { id, repo, text }),
+  projectsBuildEnvClear: (id, repo) => ipcRenderer.invoke(IPC2.ProjectsBuildEnvClear, { id, repo })
 });
