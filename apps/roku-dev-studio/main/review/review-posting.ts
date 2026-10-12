@@ -212,6 +212,9 @@ export function setupPostingHandlers(deps: {
           run.errors[id] = err instanceof Error ? err.message : String(err);
           mainWarn(`[reviews] posting ${id} to ${repo}#${number} failed: ${run.errors[id]}`);
         }
+        // Done with this one: the bar shows "waiting", not "posting", until the next goes out.
+        run.current = undefined;
+        broadcast(run);
       }
       run.current = undefined;
       run.queue = [];

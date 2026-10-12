@@ -1044,7 +1044,7 @@ function renderPostBar(result: StoredReview['result']): HTMLElement {
     const left = run.queue.length + (run.current ? 1 : 0);
     return h('div', { class: 'prr-postbar prr-postbar-running', role: 'status' }, [
       h('div', { class: 'prr-postbar-text' }, [
-        h('strong', {}, [run.current ? h('span', { class: 'prr-inline' }, [h('span', { class: 'prr-spinner', 'aria-hidden': 'true' }), ' Posting a comment…']) : 'Waiting for the next comment']),
+        h('strong', {}, [run.current && !run.nextAt ? h('span', { class: 'prr-inline' }, [h('span', { class: 'prr-spinner', 'aria-hidden': 'true' }), ' Posting a comment…']) : `${Object.keys(run.posted).length} posted · waiting for the next comment`]),
         h('span', { class: 'prr-muted' }, [`${left} left`, ...(run.nextAt ? [' · next in ', h('span', { 'data-countdown': String(run.nextAt) }, [countdown(run.nextAt)])] : [])]),
       ]),
       h('span', { class: 'prr-muted prr-postbar-hint' }, ['Keep the app open: closing it drops the rest.']),
@@ -1269,6 +1269,23 @@ function renderReviewDrawer(project: ProjectItem, view: NonNullable<typeof revie
   ], [exportMenu, openPr]);
 }
 
+/** What a container shows: markup plus form values (set as properties, so not in the markup). */
+function viewSignature(el: HTMLElement): string {
+  const values = Array.from(el.querySelectorAll<HTMLInputElement>('input, textarea, select')).map((i) => (i.type === 'checkbox' || i.type === 'radio' ? String(i.checked) : i.value));
+  return el.innerHTML + JSON.stringify(values);
+}
+
+/** Replace a container's content only when it would look different: live updates that change nothing do not blink. */
+function swap(container: HTMLElement, nodes: Node[]): boolean {
+  const next = document.createElement('div');
+  next.append(...nodes);
+  const sig = viewSignature(next);
+  if (container.dataset.view === sig) return false;
+  container.dataset.view = sig;
+  container.replaceChildren(...Array.from(next.childNodes));
+  return true;
+}
+
 function renderDrawer(project: ProjectItem | undefined): void {
   const layer = document.getElementById('prReviewsDrawer');
   if (!layer) return;
@@ -1287,29 +1304,24 @@ function renderDrawer(project: ProjectItem | undefined): void {
   };
   if (project && reviewView) {
     layer.hidden = false;
-    layer.replaceChildren(h('div', { class: 'prr-backdrop', 'data-action': 'close-drawer' }), renderReviewDrawer(project, reviewView));
-    hydrateScreenshots(project);
-    restore();
+    if (swap(layer, [h('div', { class: 'prr-backdrop', 'data-action': 'close-drawer' }), renderReviewDrawer(project, reviewView)])) {
+      hydrateScreenshots(project);
+      restore();
+    }
     return;
   }
   if (devicesOpen) {
-    // Same data as on screen: leave it alone instead of rebuilding it (no blinking on live updates).
-    const sig = JSON.stringify({ devices, found, discovering, discoverError });
-    if (layer.dataset.sig === sig && !layer.hidden && layer.querySelector('[aria-label="Test devices"]')) return;
-    layer.dataset.sig = sig;
     layer.hidden = false;
-    layer.replaceChildren(h('div', { class: 'prr-backdrop', 'data-action': 'close-drawer' }), renderDevicesDrawer());
-    restore();
+    if (swap(layer, [h('div', { class: 'prr-backdrop', 'data-action': 'close-drawer' }), renderDevicesDrawer()])) restore();
     return;
   }
-  layer.dataset.sig = '';
   const open = drawerOpen && !!project && !isPicking(project);
   layer.hidden = !open;
   if (!open || !project) {
-    layer.replaceChildren();
+    swap(layer, []);
     return;
   }
-  layer.replaceChildren(
+  swap(layer, [
     h('div', { class: 'prr-backdrop', 'data-action': 'close-drawer' }),
     h('aside', { class: 'prr-drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Repos for ${project.name}` }, [
       h('header', { class: 'prr-drawer-head' }, [
@@ -1317,8 +1329,8 @@ function renderDrawer(project: ProjectItem | undefined): void {
         h('button', { type: 'button', class: 'prr-icon-btn prr-close', 'data-action': 'close-drawer', 'aria-label': 'Close', title: 'Close (Esc)' }, ['×']),
       ]),
       h('div', { class: 'prr-drawer-body' }, renderPicker(project, 'stack')),
-    ])
-  );
+    ]),
+  ]);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1580,7 +1592,7 @@ function renderToolbar(project: ProjectItem): HTMLElement {
   if (isPicking(project)) return h('div', { class: 'prr-toolbar' }, [projectField]);
   return h('div', { class: 'prr-toolbar' }, [
     h('div', { class: 'prr-toolbar-start' }, [projectField, renderDeviceField()]),
-    h('div', { class: 'prr-toolbar-end' }, [data ? h('span', { class: 'prr-muted prr-updated', 'aria-live': 'polite' }, [`Updated ${timeAgo(new Date(data.fetchedAt).toISOString())}`]) : h('span', {}, []), refresh, repos]),
+    h('div', { class: 'prr-toolbar-end' }, [data ? h('span', { class: 'prr-muted prr-updated', 'aria-live': 'polite', 'data-ago': String(data.fetchedAt) }, [`Updated ${timeAgo(new Date(data.fetchedAt).toISOString())}`]) : h('span', {}, []), refresh, repos]),
   ]);
 }
 
@@ -1636,7 +1648,7 @@ function render(): void {
       children.push(...renderPrList(project));
     }
   }
-  root.replaceChildren(...children);
+  swap(root, children);
   renderDrawer(project);
   if (scroller) scroller.scrollTop = scrollTop;
 
@@ -1999,7 +2011,8 @@ export function initPrReviewsPanel(): void {
     const project = selected();
     const cached = project ? prData.get(project.id) : undefined;
     if (project && cached && !isPicking(project) && Date.now() - cached.fetchedAt > REFRESH_MS) void loadPrs(project, true);
-    else render();
+    // Only the label ages: update its text in place instead of redrawing the list.
+    else document.querySelectorAll<HTMLElement>(`#${PANEL_ID} [data-ago]`).forEach((el) => (el.textContent = `Updated ${timeAgo(new Date(Number(el.dataset.ago)).toISOString())}`));
   }, 60 * 1000);
   render();
 }
