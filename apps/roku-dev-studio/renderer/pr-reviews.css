@@ -403,3 +403,7 @@ details.prr-section > summary { cursor: pointer; }
 .prr-postbar-hint { font-size: 12px; }
 .prr-postbar-own { border-color: var(--border-hover); }
 .prr-ticket-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+
+.prr-discussion { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-left: 3px solid var(--border-hover); background: var(--bg-tertiary); border-radius: 4px; font-size: 12px; }
+.prr-discussion-head { display: flex; align-items: center; gap: 8px; }
+.prr-discussion-last { margin: 0; white-space: pre-wrap; color: var(--text-secondary); }

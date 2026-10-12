@@ -56,6 +56,8 @@ export interface PromptContext {
   ticketBlock?: string;
   /** Findings the team dismissed before in this repo: not to be raised again. */
   dismissedBlock?: string;
+  /** The PR's existing threads and replies (see discussion.ts); judge only. */
+  discussionBlock?: string;
   /** Test files this PR adds or changes; the only tests a device check may run. */
   prTests?: string[];
 }
@@ -167,6 +169,14 @@ export interface PreviousFinding {
   line?: number;
 }
 
+const DISCUSSION_TASK = `Existing discussion: people may already have commented on this PR. Before keeping a finding, check the threads below.
+- A thread already raises the same point: set "discussion.thread" to its id. Then:
+  - it is resolved, or the reply settles it (a fix you can see in the code, or a sound reason): verdict "dismissed", reasoning starting "Settled in the PR discussion:".
+  - the author replied but the reply is wrong or incomplete (check the code): keep it "real", leave "comment" empty, and write "discussion.reply": a short reply to the author's last message, in the comment style, saying what is still wrong and why.
+  - nobody answered yet: keep it, "comment" empty, "discussion.reply" empty. It is already raised; never repeat it as a new comment.
+- Use the discussion as context: decisions and constraints the author explained count as evidence.
+- "reviewBody" must not repeat points already made in the discussion.`;
+
 export function judgePrompt(ctx: PromptContext, findings: unknown[], previous: PreviousFinding[] = []): string {
   return `${sharedContext(ctx)}
 
@@ -189,7 +199,7 @@ Write the GitHub comments a human reviewer would post:
 ${SEVERITY}
 ${LOCATION} Carry the location from the finding you kept and correct it against the diff when it is wrong.
 
-Test files in this PR: ${ctx.prTests?.length ? ctx.prTests.join(', ') : 'none (so no device test can run; do not set "tests")'}
+${ctx.discussionBlock ? `${DISCUSSION_TASK}\n${ctx.discussionBlock}\n\n` : ''}Test files in this PR: ${ctx.prTests?.length ? ctx.prTests.join(', ') : 'none (so no device test can run; do not set "tests")'}
 
 Reviewer findings (JSON; "raisedBy" = the lenses that raised it; copy it to "sources"):
 ${JSON.stringify(findings, null, 2)}
@@ -198,5 +208,5 @@ Still-open findings from the previous review, in files the new commits touched (
 ${JSON.stringify(previous, null, 2)}
 ` : ''}
 Reply with ONE JSON object and nothing else:
-{"summary":"2-4 sentences on the PR overall","reviewBody":"overall PR comment, or empty","deviceRecommended":false,"deviceReason":"why, if recommended","findings":[{"title":"short summary","detail":"what is wrong and the fix","severity":"info|minor|major|critical","file":"path","line":1,"endLine":1,"verdict":"real|dismissed","needsDevice":false,"deviceCheck":"","tests":[],"confidence":0.0,"reasoning":"what you read in the code that decides it","sources":["lens labels that raised it"],"comment":"the inline GitHub comment text (verdict real only)","previousId":"only for a previous finding"}]}`;
+{"summary":"2-4 sentences on the PR overall","reviewBody":"overall PR comment, or empty","deviceRecommended":false,"deviceReason":"why, if recommended","findings":[{"title":"short summary","detail":"what is wrong and the fix","severity":"info|minor|major|critical","file":"path","line":1,"endLine":1,"verdict":"real|dismissed","needsDevice":false,"deviceCheck":"","tests":[],"confidence":0.0,"reasoning":"what you read in the code that decides it","sources":["lens labels that raised it"],"comment":"the inline GitHub comment text (verdict real only)","previousId":"only for a previous finding"${ctx.discussionBlock ? ',"discussion":{"thread":"thread id, only when a thread already raises it","reply":"reply to post in that thread, or empty"}' : ''}}]}`;
 }

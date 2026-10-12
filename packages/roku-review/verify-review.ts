@@ -12,6 +12,7 @@ import { detectBuild, parseJsonc, projectFolders } from './build-detect';
 import { excerptConsole, makeRedactor, testResult, TEST_FILE } from './device';
 import { applyDismissals, dismissalPromptBlock, matchDismissal, type Dismissal } from './suppressions';
 import type { ReviewFinding } from './review';
+import { discussionPromptBlock, toThreads } from './discussion';
 import { ciFindings, ciInfraFailures, ciPromptBlock, isCodeAnnotation } from './ci';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -191,6 +192,26 @@ async function deviceChecks(): Promise<void> {
   assert.equal(findings[1].status, 'issue', 'CI findings are facts');
   assert.equal(dismissalPromptBlock([]), '');
   assert.ok(dismissalPromptBlock(twice).indexOf('the row height') < dismissalPromptBlock(twice).indexOf('used for row height'), 'most recent first');
+}
+
+// PR discussion: threads fold replies, drop bots and our marker, open threads first.
+{
+  const c = (id: number, login: string, body: string, at: string, bot = false) => ({ databaseId: id, url: `u${id}`, body, createdAt: at, author: { login, __typename: bot ? 'Bot' : 'User' } });
+  const threads = toThreads({
+    reviewThreads: { nodes: [
+      { isResolved: true, isOutdated: false, path: 'a.brs', line: 3, originalLine: 3, comments: { nodes: [c(1, 'me', 'old', '2026-10-01')] } },
+      { isResolved: false, isOutdated: false, path: 'b.brs', line: null, originalLine: 9, comments: { nodes: [c(2, 'me', 'Fix this\n\n<!-- rds-review:abc -->', '2026-10-02'), c(3, 'author', 'Keeping it: reason', '2026-10-03')] } },
+    ] },
+    comments: { nodes: [c(4, 'github-actions', 'Coverage', '2026-10-04', true), c(5, 'me', 'Overall note', '2026-10-05')] },
+  });
+  assert.deepEqual(threads.map((t) => t.id), ['c5', 't2', 't1'], 'open first, newest first; bots dropped');
+  const t2 = threads.find((t) => t.id === 't2')!;
+  assert.equal(t2.rootId, 2);
+  assert.equal(t2.line, 9, 'falls back to originalLine');
+  assert.equal(t2.comments[0].body, 'Fix this', 'our hidden marker is stripped');
+  assert.equal(t2.comments[1].author, 'author');
+  assert.ok(discussionPromptBlock({ threads }).includes('"id": "t2"'));
+  assert.ok(discussionPromptBlock({ threads: [], error: 'HTTP 403' }).includes('could not be read'));
 }
 
 void buildChecks().then(deviceChecks).then(() => console.log('verify-review: ok'));

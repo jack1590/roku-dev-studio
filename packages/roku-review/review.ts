@@ -14,6 +14,7 @@ import { ciFindings, ciInfraFailures, type CiReport } from './ci';
 import type { TicketLookup } from './jira';
 import { judgePrompt, LENSES, reviewerPrompt, type LensId, type PromptContext } from './prompts';
 import type { DeviceReport } from './device';
+import type { Discussion } from './discussion';
 import { applyDismissals, countFindings, similar, type Dismissal } from './suppressions';
 
 export type Severity = 'info' | 'minor' | 'major' | 'critical';
@@ -49,6 +50,8 @@ export interface ReviewFinding {
   /** Set for findings that come from CI annotations: facts, not judged. */
   ci?: { check: string; url?: string };
   /** Dismissed by the user: on this review, or `remembered` from an earlier dismissal in the repo. */
+  /** A PR thread that already raises it; `reply` is the draft reply for that thread (posted instead of a new comment). */
+  discussion?: { thread: string; url?: string; replyTo?: number; lastAuthor: string; last: string; resolved: boolean; reply?: string };
   userDismissed?: { at: number; reason?: string; previousStatus: FindingStatus; remembered: boolean; prNumber?: number };
 }
 
@@ -101,6 +104,8 @@ export interface ReviewResult {
     /** The ticket the review was checked against, or why there was none. */
     ticket?: { key: string; url: string; summary: string; type?: string; status?: string; foundIn: string; figmaLinks: string[] };
     ticketNote?: string;
+    /** The PR discussion the judge saw, or why it could not be read. */
+    discussion?: { threads: number; resolved: number; replies: number; error?: string };
   };
 }
 
@@ -122,6 +127,8 @@ export interface ReviewInput {
   previous?: { sinceSha: string; recheck: ReviewFinding[]; carry: ReviewFinding[]; prFiles: string[] };
   /** Findings the team dismissed before in this repo (already in the prompt via ctx.dismissedBlock); matches go to Dismissed. */
   dismissals?: Dismissal[];
+  /** The PR's existing threads (already in the judge prompt via ctx.discussionBlock). */
+  discussion?: Discussion;
 }
 
 interface RawFinding {
@@ -140,6 +147,7 @@ interface RawFinding {
   comment?: unknown;
   previousId?: unknown;
   tests?: unknown;
+  discussion?: unknown;
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
@@ -287,6 +295,19 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
   let deviceRecommended = false;
   let deviceReason: string | undefined;
 
+  /** The comment to post: a new one, or a reply in the thread that already raises it, or none (already raised). */
+  const discussionOf = (raw: RawFinding, verdict: 'real' | 'dismissed'): Pick<ReviewFinding, 'comment' | 'discussion'> => {
+    const d = typeof raw.discussion === 'object' && raw.discussion ? (raw.discussion as { thread?: unknown; reply?: unknown }) : {};
+    const thread = input.discussion?.threads.find((t) => t.id === str(d.thread));
+    if (!thread) return { comment: verdict === 'real' ? str(raw.comment) || undefined : undefined };
+    const last = thread.comments[thread.comments.length - 1];
+    const reply = verdict === 'real' && thread.rootId ? str(d.reply) || undefined : undefined;
+    return {
+      comment: reply,
+      discussion: { thread: thread.id, url: thread.url, ...(thread.rootId ? { replyTo: thread.rootId } : {}), lastAuthor: last.author, last: last.body.slice(0, 300), resolved: thread.resolved, ...(reply ? { reply } : {}) },
+    };
+  };
+
   if (judged && Array.isArray(judged.findings)) {
     summary = str(judged.summary) || 'Review finished.';
     reviewBody = str(judged.reviewBody) || undefined;
@@ -315,7 +336,7 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
         reasoning: str(raw.reasoning),
         sources: Array.isArray(raw.sources) ? raw.sources.filter((s): s is string => typeof s === 'string') : [],
         inDiff: file ? changed.has(file) : false,
-        comment: verdict === 'real' ? str(raw.comment) || undefined : undefined,
+        ...discussionOf(raw, verdict),
         ...(needsDevice && Array.isArray(raw.tests) ? { tests: raw.tests.filter((t): t is string => typeof t === 'string' && (input.ctx.prTests ?? []).includes(t)) } : {}),
       });
     }
@@ -415,6 +436,9 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
       instructions: !!input.ctx.instructions.trim(),
       diffNotes: input.ctx.diffNotes,
       files: input.changedFiles.length,
+      ...(input.discussion
+        ? { discussion: { threads: input.discussion.threads.length, resolved: input.discussion.threads.filter((t) => t.resolved).length, replies: input.discussion.threads.filter((t) => t.comments.length > 1).length, ...(input.discussion.error ? { error: input.discussion.error } : {}) } }
+        : {}),
       ...(input.ticket?.ticket
         ? { ticket: { key: input.ticket.ticket.key, url: input.ticket.ticket.url, summary: input.ticket.ticket.summary, type: input.ticket.ticket.type, status: input.ticket.ticket.status, foundIn: input.ticket.ticket.foundIn, figmaLinks: input.ticket.ticket.figmaLinks } }
         : input.ticket?.note

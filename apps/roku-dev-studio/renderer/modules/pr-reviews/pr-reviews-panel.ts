@@ -77,6 +77,7 @@ interface ReviewFinding {
   tests?: string[];
   ci?: { check: string; url?: string };
   userDismissed?: { at: number; reason?: string; previousStatus: FindingStatus; remembered: boolean; prNumber?: number };
+  discussion?: { thread: string; url?: string; replyTo?: number; lastAuthor: string; last: string; resolved: boolean; reply?: string };
 }
 
 interface DeviceRound {
@@ -153,7 +154,7 @@ interface StoredReview {
     lostLenses?: string[];
     ci?: { checks: { name: string; state: string; url?: string; annotations: number }[]; infra: string[]; error?: string };
     incremental?: { sinceSha: string; carried: number; rechecked: number };
-    context: { standards: string[]; wikiPages: string[]; instructions: boolean; diffNotes: string[]; files: number; ticket?: { key: string; url: string; summary: string; type?: string; status?: string; foundIn: string; figmaLinks: string[] }; ticketNote?: string };
+    context: { standards: string[]; wikiPages: string[]; instructions: boolean; diffNotes: string[]; files: number; ticket?: { key: string; url: string; summary: string; type?: string; status?: string; foundIn: string; figmaLinks: string[] }; ticketNote?: string; discussion?: { threads: number; resolved: number; replies: number; error?: string } };
   };
 }
 
@@ -724,6 +725,7 @@ function renderFinding(repo: string, sha: string, f: ReviewFinding): HTMLElement
       : []),
     ...(f.detail ? [h('p', { class: 'prr-finding-detail' }, [f.detail])] : []),
     ...(f.ci ? [h('div', { class: 'prr-finding-ci' }, [h('span', { class: 'prr-pill prr-pill-info' }, ['From CI']), ' ', f.ci.url ? h('button', { type: 'button', class: 'prr-link-btn', 'data-action': 'open-pr', 'data-url': f.ci.url }, [f.ci.check]) : f.ci.check, ' · a fact from the check run, not judged'])] : []),
+    ...(f.discussion ? [renderDiscussion(f.discussion)] : []),
     ...(f.deviceCheck ? [h('div', { class: 'prr-finding-device' }, [h('strong', {}, [f.deviceEvidence ? 'Device check: ' : 'Verify on a device: ']), f.deviceCheck])] : []),
     ...(f.status === 'needs-device'
       ? [h('p', { class: 'prr-finding-tests prr-muted' }, [f.tests?.length ? `PR tests that exercise it: ${f.tests.join(', ')}` : 'No test in this PR covers it: verify it manually (use Copy fix prompt), or ask the author for a test.'])]
@@ -732,7 +734,7 @@ function renderFinding(repo: string, sha: string, f: ReviewFinding): HTMLElement
     ...(f.comment && f.status !== 'dismissed'
       ? [
           posting && (f.status === 'issue' || f.status === 'needs-device')
-            ? renderPostableComment(f.id, f.file ? `Comment on ${f.file}${f.line ? `:${f.line}` : ''}` : 'Comment (posted as a plain PR comment)', commentText(f), {
+            ? renderPostableComment(f.id, f.discussion?.reply ? `Reply to @${f.discussion.lastAuthor} in the thread` : f.file ? `Comment on ${f.file}${f.line ? `:${f.line}` : ''}` : 'Comment (posted as a plain PR comment)', commentText(f), {
                 original: f.comment,
                 tickable: true,
                 ticked: !posting.unchecked.has(f.id),
@@ -751,6 +753,19 @@ function renderFinding(repo: string, sha: string, f: ReviewFinding): HTMLElement
     ]),
     ...(dismissing?.id === f.id ? [renderDismissForm(f)] : []),
     ...(f.userDismissed ? [renderUserDismissed(f)] : []),
+  ]);
+}
+
+/** A PR thread already raises this finding: show who said what last, and whether we reply. */
+function renderDiscussion(d: NonNullable<ReviewFinding['discussion']>): HTMLElement {
+  const state = d.resolved ? 'Resolved in the PR' : d.reply ? 'Discussed: reply drafted' : 'Already raised in the PR';
+  return h('div', { class: 'prr-discussion' }, [
+    h('div', { class: 'prr-discussion-head' }, [
+      h('span', { class: `prr-pill prr-pill-${d.reply ? 'warn' : 'info'}` }, [state]),
+      ...(d.url ? [h('button', { type: 'button', class: 'prr-link-btn', 'data-action': 'open-pr', 'data-url': d.url }, ['Open thread'])] : []),
+    ]),
+    h('p', { class: 'prr-discussion-last' }, [h('strong', {}, [`@${d.lastAuthor}: `]), d.last]),
+    ...(!d.reply && !d.resolved ? [h('p', { class: 'prr-muted' }, ['Not posted again: it is already on the PR.'])] : []),
   ]);
 }
 
@@ -1157,6 +1172,7 @@ function renderReviewDrawer(project: ProjectItem, view: NonNullable<typeof revie
       ]),
       ...(ctx.ticket?.figmaLinks.length ? [h('li', { class: 'prr-muted' }, [`Linked designs (not reviewed yet): ${ctx.ticket.figmaLinks.length}`])] : []),
       h('li', {}, [`${ctx.files} changed file(s)`]),
+      ...(ctx.discussion ? [h('li', ctx.discussion.error ? { class: 'prr-muted' } : {}, [ctx.discussion.error ? `PR discussion not read: ${ctx.discussion.error}` : ctx.discussion.threads ? `PR discussion: ${ctx.discussion.threads} thread(s), ${ctx.discussion.resolved} resolved, ${ctx.discussion.replies} with replies` : 'PR discussion: no comments yet'])] : []),
       h('li', {}, [ctx.standards.length ? `Repo standards: ${ctx.standards.join(', ')}` : 'No repo standards files found']),
       h('li', {}, [ctx.wikiPages.length ? `Wiki: ${ctx.wikiPages.join(', ')}` : 'No wiki pages matched']),
       h('li', {}, [ctx.instructions ? 'Team instructions from the project settings' : 'No team instructions']),

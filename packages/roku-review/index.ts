@@ -18,6 +18,7 @@ export * from './git';
 export * from './agent';
 export * from './ci';
 export * from './jira';
+export * from './discussion';
 export * from './prompts';
 export * from './review';
 export * from './suppressions';

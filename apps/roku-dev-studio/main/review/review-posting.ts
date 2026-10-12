@@ -8,6 +8,7 @@
  * - The general comment, when chosen, is posted first as a plain PR comment.
  * - One by one: the first comment goes right away, each next one after a random 0..max minutes.
  *   Otherwise all go at once. The queue lives in this process: if the app closes, the rest is dropped.
+ * - A finding a PR thread already raises is posted as a reply in that thread, never as a new comment.
  * - Every comment carries a hidden marker, so a comment is never posted twice, even after a re-review.
  *
  * Only plain comments: nothing approves or requests changes. The token is only used in request headers.
@@ -33,6 +34,8 @@ interface StoredFinding {
   endLine?: number;
   status: string;
   comment?: string;
+  /** Set when a PR thread already raises it: the comment is a reply posted in that thread. */
+  discussion?: { replyTo?: number; url?: string };
 }
 
 interface StoredReviewLike {
@@ -181,7 +184,13 @@ export function setupPostingHandlers(deps: {
             if (!text) throw new Error('This finding has no comment text.');
             const body = `${text}\n\n${marker(id)}`;
             let posted = false;
-            if (f.file && f.line) {
+            if (f.discussion?.replyTo) {
+              // Already discussed: answer in that thread.
+              const reply = await github(token, 'POST', `/repos/${repo}/pulls/${number}/comments/${f.discussion.replyTo}/replies`, { body });
+              if (!reply.ok) throw new Error(`GitHub returned HTTP ${reply.status} replying in the thread.`);
+              posted = true;
+              url = (reply.json as { html_url?: string })?.html_url;
+            } else if (f.file && f.line) {
               const inline = await github(token, 'POST', `/repos/${repo}/pulls/${number}/comments`, {
                 body,
                 commit_id: stored.result.headSha,
