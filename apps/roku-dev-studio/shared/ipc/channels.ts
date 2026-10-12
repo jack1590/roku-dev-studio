@@ -679,6 +679,14 @@ export const IPC = {
   ReviewsPost: 'reviews:post',
   /** PR Reviews: edits, posted marks and any running posting queue of a review. */
   ReviewsPostingState: 'reviews:posting-state',
+  /** PR Reviews: dismiss a finding on a review and remember it for the repo (two-tier suppression). */
+  ReviewsDismiss: 'reviews:dismiss',
+  /** PR Reviews: undo a user dismissal on a review and forget that objection for the repo. */
+  ReviewsRestoreFinding: 'reviews:restore-finding',
+  /** Settings → AI review: remembered dismissals per repo. */
+  ReviewsDismissals: 'reviews:dismissals',
+  /** Settings → AI review: forget one remembered dismissal. */
+  ReviewsForgetDismissal: 'reviews:forget-dismissal',
   /** Main → windows: progress of a posting run. */
   ReviewsPostUpdate: 'reviews:post-update',
   /** Settings → Projects: detect how a repo builds, from its base-branch files on GitHub. */

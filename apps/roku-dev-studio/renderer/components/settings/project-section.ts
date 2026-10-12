@@ -166,6 +166,47 @@ interface BuildDraft {
   envStatus?: string;
 }
 const buildDrafts = new Map<string, BuildDraft>();
+
+interface RememberedDismissal { id: string; file?: string; title: string; reason?: string; at: number; prNumber?: number }
+/** Remembered dismissals per project (by repo), loaded when the AI review tab opens. */
+const dismissalCache = new Map<string, { loading: boolean; byRepo?: Record<string, RememberedDismissal[]> }>();
+
+async function loadDismissals(project: ProjectItem): Promise<void> {
+  dismissalCache.set(project.id, { loading: true, byRepo: dismissalCache.get(project.id)?.byRepo });
+  const res = await api.reviewsDismissals(project.repos ?? []);
+  dismissalCache.set(project.id, { loading: false, byRepo: res?.success ? res.dismissals : {} });
+  render();
+}
+
+function renderDismissals(project: ProjectItem): HTMLElement {
+  const cache = dismissalCache.get(project.id);
+  if (!cache) void loadDismissals(project);
+  const repos = Object.entries(cache?.byRepo ?? {}).filter(([, list]) => list.length);
+  const body = !cache?.byRepo
+    ? [h('p', { class: 'projects-hint' }, ['Loading…'])]
+    : !repos.length
+      ? [h('p', { class: 'projects-hint' }, ['Nothing dismissed yet. Use Dismiss on a finding in PR Reviews.'])]
+      : repos.map(([repo, list]) =>
+          h('div', { class: 'projects-dismissals' }, [
+            h('h5', { class: 'projects-dismissals-repo' }, [`${repo} (${list.length})`]),
+            h('ul', { class: 'projects-dismissals-list' }, list.map((d) =>
+              h('li', { class: 'projects-dismissal' }, [
+                h('div', {}, [
+                  h('strong', {}, [d.title]),
+                  h('p', { class: 'projects-hint' }, [[d.file, d.prNumber ? `#${d.prNumber}` : '', new Date(d.at).toLocaleDateString()].filter(Boolean).join(' · ') + (d.reason ? ` — ${d.reason}` : '')]),
+                ]),
+                h('button', { type: 'button', class: 'btn btn-secondary btn-sm', 'data-action': 'forget-dismissal', 'data-repo': repo, 'data-id': d.id, title: 'Raise it again on future reviews' }, ['Restore']),
+              ]),
+            )),
+          ]),
+        );
+  return h('section', { class: 'projects-group' }, [
+    h('div', { class: 'projects-group-head' }, [
+      h('div', {}, [h('h4', { class: 'projects-group-title' }, ['Dismissed findings']), h('p', { class: 'projects-hint' }, ['Reviews stop raising these. One dismissal covers its file; two of the same kind cover the whole repo. Restore takes effect on the next review.'])]),
+    ]),
+    ...body,
+  ]);
+}
 const buildKey = (projectId: string, repo: string) => `${projectId}|${repo}`;
 
 function buildDraft(project: ProjectItem, repo: string): BuildDraft {
@@ -962,6 +1003,7 @@ function renderReviewTab(project: ProjectItem): HTMLElement {
       h('label', { class: 'projects-check-row', for: `incrementalReview-${project.id}` }, [incremental, h('span', {}, ['Re-review only what changed'])]),
       h('p', { class: 'projects-hint' }, ['After new commits, only those commits are reviewed and still-open findings carry over. Re-reviewing with no new commits always reviews the whole PR.']),
     ]),
+    renderDismissals(project),
     renderSaveBar(project),
   ]);
 }
@@ -1360,6 +1402,8 @@ function wireEvents(): void {
       reviewDrafts.delete(project.id);
       reviewStatus.delete(project.id);
       render();
+    } else if (action === 'forget-dismissal' && project) {
+      void api.reviewsForgetDismissal(target.getAttribute('data-repo') ?? '', target.getAttribute('data-id') ?? '').then(() => loadDismissals(project));
     } else if (action === 'detect-build' && project) {
       void detectBuildFor(project, target.getAttribute('data-repo') ?? '');
     } else if (action === 'approve-build' && project) {

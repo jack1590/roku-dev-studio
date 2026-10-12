@@ -14,6 +14,7 @@ import { ciFindings, ciInfraFailures, type CiReport } from './ci';
 import type { TicketLookup } from './jira';
 import { judgePrompt, LENSES, reviewerPrompt, type LensId, type PromptContext } from './prompts';
 import type { DeviceReport } from './device';
+import { applyDismissals, countFindings, similar, type Dismissal } from './suppressions';
 
 export type Severity = 'info' | 'minor' | 'major' | 'critical';
 export type FindingStatus = 'issue' | 'needs-device' | 'noted' | 'dismissed';
@@ -47,6 +48,8 @@ export interface ReviewFinding {
   tests?: string[];
   /** Set for findings that come from CI annotations: facts, not judged. */
   ci?: { check: string; url?: string };
+  /** Dismissed by the user: on this review, or `remembered` from an earlier dismissal in the repo. */
+  userDismissed?: { at: number; reason?: string; previousStatus: FindingStatus; remembered: boolean; prNumber?: number };
 }
 
 export interface AgentSummary {
@@ -117,6 +120,8 @@ export interface ReviewInput {
   ticket?: TicketLookup;
   /** Re-review after new commits: previous findings to re-check (files the commits touched) and to carry over as they are. */
   previous?: { sinceSha: string; recheck: ReviewFinding[]; carry: ReviewFinding[]; prFiles: string[] };
+  /** Findings the team dismissed before in this repo (already in the prompt via ctx.dismissedBlock); matches go to Dismissed. */
+  dismissals?: Dismissal[];
 }
 
 interface RawFinding {
@@ -157,15 +162,6 @@ export function classify(f: { verdict: 'real' | 'dismissed'; needsDevice: boolea
 /** Errors a retry cannot fix: usage or spend limits, auth, a model that does not exist. */
 export function isPermanentFailure(error: string): boolean {
   return /usage limit|spend limit|quota|unauthori[sz]ed|invalid api key|forbidden|model .*not (found|available)/i.test(error);
-}
-
-const words = (t: string) => new Set(t.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2));
-function similar(a: string, b: string): boolean {
-  const x = words(a), y = words(b);
-  if (!x.size || !y.size) return false;
-  let both = 0;
-  for (const w of x) if (y.has(w)) both++;
-  return both / (x.size + y.size - both) >= 0.4;
 }
 
 /**
@@ -389,10 +385,12 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
     }
   }
 
+  // After the kept counts: a remembered dismissal is the team's call, not the lens being wrong.
+  if (input.dismissals?.length) applyDismissals(findings, input.dismissals);
+
   const order: Record<FindingStatus, number> = { issue: 0, 'needs-device': 1, noted: 2, dismissed: 3 };
   findings.sort((a, b) => order[a.status] - order[b.status] || SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity]);
-  const counts: Record<FindingStatus, number> = { issue: 0, 'needs-device': 0, noted: 0, dismissed: 0 };
-  for (const f of findings) counts[f.status]++;
+  const counts = countFindings(findings);
 
   return {
     headSha: input.headSha,

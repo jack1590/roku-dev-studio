@@ -311,6 +311,11 @@ details.prr-section > summary { cursor: pointer; }
 .prr-finding-reason { color: var(--text-muted); font-size: 12px; }
 .prr-finding-device { padding: 8px 10px; border-radius: 8px; background: var(--accent-amber-dim); color: var(--text-primary); font-size: 12px; line-height: 1.5; }
 .prr-finding-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--text-muted); }
+.prr-dismiss-btn { margin-left: auto; font-size: 11px; }
+.prr-dismiss-form { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-tertiary); }
+.prr-dismiss-label { font-size: 12px; color: var(--text-secondary); }
+.prr-dismiss-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.prr-user-dismissed { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
 .prr-checked-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); }
 .prr-agents { width: 100%; border-collapse: collapse; font-size: 12px; }
 .prr-agents th, .prr-agents td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }

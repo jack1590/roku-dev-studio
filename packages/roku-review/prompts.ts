@@ -54,6 +54,8 @@ export interface PromptContext {
   ciBlock?: string;
   /** The JIRA ticket the PR implements, or why there is none (see jira.ts). */
   ticketBlock?: string;
+  /** Findings the team dismissed before in this repo: not to be raised again. */
+  dismissedBlock?: string;
   /** Test files this PR adds or changes; the only tests a device check may run. */
   prTests?: string[];
 }
@@ -129,7 +131,7 @@ ${standardsBlock(ctx)}
 ${teamBlock(ctx)}
 
 ${changeBlock(ctx)}
-${ctx.ciBlock ? `\n${ctx.ciBlock}\n` : ''}
+${ctx.ciBlock ? `\n${ctx.ciBlock}\n` : ''}${ctx.dismissedBlock ? `\n${ctx.dismissedBlock}\n` : ''}
 ${READ_ONLY}`;
 }
 

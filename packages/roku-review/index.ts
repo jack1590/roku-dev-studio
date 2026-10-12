@@ -20,6 +20,7 @@ export * from './ci';
 export * from './jira';
 export * from './prompts';
 export * from './review';
+export * from './suppressions';
 export * from './build-detect';
 export * from './device';
 

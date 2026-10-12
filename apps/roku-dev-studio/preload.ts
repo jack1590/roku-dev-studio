@@ -1224,6 +1224,8 @@ contextBridge.exposeInMainWorld('rdsReviews', {
   postingState: (input: { projectId: string; repo: string; number: number }) => ipcRenderer.invoke(IPC.ReviewsPostingState, input),
   saveComment: (input: { projectId: string; repo: string; number: number; id: string; text: string | null }) => ipcRenderer.invoke(IPC.ReviewsSaveComment, input),
   post: (input: { projectId: string; repo: string; number: number; ids: string[]; general: string | null; spaced: boolean; maxMinutes: number }) => ipcRenderer.invoke(IPC.ReviewsPost, input),
+  dismiss: (input: { projectId: string; repo: string; number: number; id: string; reason: string }) => ipcRenderer.invoke(IPC.ReviewsDismiss, input),
+  restoreFinding: (input: { projectId: string; repo: string; number: number; id: string }) => ipcRenderer.invoke(IPC.ReviewsRestoreFinding, input),
   onPostUpdate: (callback: (update: unknown) => void) => {
     const handler = (_e: IpcRendererEvent, update: unknown) => callback(update);
     ipcRenderer.on(IPC.ReviewsPostUpdate, handler);

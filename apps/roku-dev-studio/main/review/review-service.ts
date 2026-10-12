@@ -11,13 +11,14 @@
 import type { App, IpcMainInvokeEvent } from 'electron';
 import { IPC } from '../../shared/ipc/channels';
 import { containsSecret, defaultCompanyTag } from '../../shared/project-config';
-import { addCost, EMPTY_COST, ciPromptBlock, fetchCi, lookupTicket, ticketPromptBlock, readChangedFiles, TEST_FILE, budgetDiff, fileInventory, prepareCheckout, readStandards, readWiki, renderWikiPromptBlock, runDeviceVerification, runReview, selectWikiContext, type DeviceReport, type ReviewResult } from 'roku-dev-studio-review';
+import { addCost, EMPTY_COST, ciPromptBlock, dismissalPromptBlock, fetchCi, lookupTicket, ticketPromptBlock, readChangedFiles, TEST_FILE, budgetDiff, fileInventory, prepareCheckout, readStandards, readWiki, renderWikiPromptBlock, runDeviceVerification, runReview, selectWikiContext, type DeviceReport, type ReviewResult } from 'roku-dev-studio-review';
 import { REVIEW_LIMITS } from '../../shared/project-config';
 import { getProjectRecord, resolveHomePath } from '../ipc/project-handlers';
 import * as tokenStore from '../project-token-store';
 import { connectedDevices } from '../mcp-bridge';
 import { isRelaySelfDevice } from '../sideload-relay/fake-device-info';
 import { setupPostingHandlers } from './review-posting';
+import { loadDismissals, setupDismissalHandlers } from './review-dismissals';
 import { busyLabel, tryClaim } from '../../shared/device-claims';
 
 const fs = require('fs');
@@ -348,6 +349,7 @@ async function execute(job: Job): Promise<void> {
   ]);
   // The only tests a device check may run: test files this PR adds or changes (never new ones).
   const prTests = prFiles.filter((f) => TEST_FILE.test(f));
+  const dismissals = loadDismissals(job.repo);
 
   let wikiBlock = '';
   let wikiPages: string[] = [];
@@ -384,6 +386,7 @@ async function execute(job: Job): Promise<void> {
     ...(files.length ? { files } : {}),
     ciBlock: ciPromptBlock(ci),
     ticketBlock: ticketPromptBlock(ticket),
+    dismissedBlock: dismissalPromptBlock(dismissals),
     prTests,
   });
   const touched = new Set(changedFiles);
@@ -400,6 +403,7 @@ async function execute(job: Job): Promise<void> {
     onPhase: (phase, detail) => update(job, { phase, detail }),
     ci,
     ticket,
+    dismissals,
     ...(incremental
       ? {
           previous: {
@@ -510,6 +514,7 @@ function setupReviewHandlers(app: App): void {
   dataDir = path.join(app.getPath('userData'), 'review');
   loadPool();
   setupPostingHandlers({ resultPath, readStored });
+  setupDismissalHandlers({ dataDir, resultPath, readStored, onSaved: (stored) => broadcast(summaryOfStored(stored as StoredReview)) });
   const { verifyDeveloperDigestAuth } = require('roku-dev-studio-api') as { verifyDeveloperDigestAuth: (o: { ip: string; password: string }) => Promise<{ success: boolean; error?: string }> };
 
   ipcMain.handle(IPC.ReviewsStart, async (_event: IpcMainInvokeEvent, payload?: { projectId?: unknown; repo?: unknown; number?: unknown }) => {

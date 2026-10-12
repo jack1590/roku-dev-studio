@@ -76,6 +76,7 @@ interface ReviewFinding {
   deviceEvidence?: string;
   tests?: string[];
   ci?: { check: string; url?: string };
+  userDismissed?: { at: number; reason?: string; previousStatus: FindingStatus; remembered: boolean; prNumber?: number };
 }
 
 interface DeviceRound {
@@ -171,6 +172,8 @@ interface ReviewsApi {
   saveComment: (input: { projectId: string; repo: string; number: number; id: string; text: string | null }) => Promise<{ success: boolean; state?: PostingState; error?: string }>;
   post: (input: { projectId: string; repo: string; number: number; ids: string[]; general: string | null; spaced: boolean; maxMinutes: number }) => Promise<{ success: boolean; run?: PostRun; error?: string }>;
   onPostUpdate: (callback: (update: PostRun) => void) => () => void;
+  dismiss: (input: { projectId: string; repo: string; number: number; id: string; reason: string }) => Promise<{ success: boolean; review?: StoredReview; error?: string }>;
+  restoreFinding: (input: { projectId: string; repo: string; number: number; id: string }) => Promise<{ success: boolean; review?: StoredReview; error?: string }>;
 }
 
 interface PostingState {
@@ -277,6 +280,8 @@ let posting: {
 const GENERAL_ID = 'general';
 
 /** The review result shown in the drawer, if any. */
+/** The finding whose Dismiss form is open, and the last dismiss error. */
+let dismissing: { id: string; error?: string } | null = null;
 let reviewView: { repo: string; number: number; loading: boolean; data?: StoredReview; error?: string } | null = null;
 
 const reviewKey = (repo: string, number: number) => `${repo}#${number}`;
@@ -411,6 +416,7 @@ async function openReview(repo: string, number: number): Promise<void> {
   const project = selected();
   if (!project || !reviewsApi) return;
   reviewView = { repo, number, loading: true };
+  dismissing = null;
   drawerOpen = false;
   render();
   const res = await reviewsApi.get({ projectId: project.id, repo, number });
@@ -723,7 +729,7 @@ function renderFinding(repo: string, sha: string, f: ReviewFinding): HTMLElement
       ? [h('p', { class: 'prr-finding-tests prr-muted' }, [f.tests?.length ? `PR tests that exercise it: ${f.tests.join(', ')}` : 'No test in this PR covers it: verify it manually (use Copy fix prompt), or ask the author for a test.'])]
       : []),
     ...(f.deviceEvidence ? [h('div', { class: 'prr-evidence' }, [h('span', { class: 'prr-evidence-title' }, ['Device evidence']), h('pre', { class: 'prr-pre' }, [f.deviceEvidence])])] : []),
-    ...(f.comment
+    ...(f.comment && f.status !== 'dismissed'
       ? [
           posting && (f.status === 'issue' || f.status === 'needs-device')
             ? renderPostableComment(f.id, f.file ? `Comment on ${f.file}${f.line ? `:${f.line}` : ''}` : 'Comment (posted as a plain PR comment)', commentText(f), {
@@ -739,8 +745,52 @@ function renderFinding(repo: string, sha: string, f: ReviewFinding): HTMLElement
     h('div', { class: 'prr-finding-meta' }, [
       ...(f.sources.length ? [h('span', {}, [`Raised by ${f.sources.join(', ')}`])] : []),
       ...(f.confidence !== undefined ? [h('span', {}, [`Confidence ${Math.round(f.confidence * 100)}%`])] : []),
+      ...(!f.ci && f.status !== 'dismissed' && dismissing?.id !== f.id
+        ? [h('button', { type: 'button', class: 'prr-link-btn prr-dismiss-btn', 'data-action': 'dismiss-finding', 'data-id': f.id, title: 'Not worth raising: move it to Dismissed and stop raising it in this repo' }, ['Dismiss…'])]
+        : []),
+    ]),
+    ...(dismissing?.id === f.id ? [renderDismissForm(f)] : []),
+    ...(f.userDismissed ? [renderUserDismissed(f)] : []),
+  ]);
+}
+
+function renderDismissForm(f: ReviewFinding): HTMLElement {
+  return h('div', { class: 'prr-dismiss-form' }, [
+    h('label', { class: 'prr-dismiss-label', for: `prr-dismiss-${f.id}` }, ['Why is it not worth raising? (optional, the reviewers see it)']),
+    h('input', { type: 'text', id: `prr-dismiss-${f.id}`, class: 'prr-input', 'data-role': 'dismiss-reason', 'data-id': f.id, maxlength: '400', placeholder: 'e.g. We keep magic numbers in theme files on purpose' }),
+    h('p', { class: 'prr-muted' }, ['Stops raising it on this file. Dismiss it a second time on any PR and it stops everywhere in the repo.']),
+    ...(dismissing?.error ? [h('p', { class: 'prr-alert', role: 'alert' }, [dismissing.error])] : []),
+    h('div', { class: 'prr-dismiss-actions' }, [
+      h('button', { type: 'button', class: 'prr-btn', 'data-action': 'cancel-dismiss' }, ['Cancel']),
+      h('button', { type: 'button', class: 'prr-btn prr-btn-primary', 'data-action': 'confirm-dismiss', 'data-id': f.id }, ['Dismiss']),
     ]),
   ]);
+}
+
+function renderUserDismissed(f: ReviewFinding): HTMLElement {
+  const d = f.userDismissed!;
+  const when = new Date(d.at).toLocaleDateString();
+  const label = d.remembered ? `You dismissed this before${d.prNumber ? ` on #${d.prNumber}` : ''} (${when})` : `You dismissed this (${when})`;
+  return h('div', { class: 'prr-user-dismissed' }, [
+    h('span', { class: 'prr-pill prr-pill-muted' }, [label]),
+    ...(d.reason ? [h('span', { class: 'prr-muted' }, [d.reason])] : []),
+    h('button', { type: 'button', class: 'prr-link-btn', 'data-action': 'restore-finding', 'data-id': f.id, title: 'Raise it again: put it back and forget the dismissal for this repo' }, ['Restore']),
+  ]);
+}
+
+async function dismissAction(action: 'confirm-dismiss' | 'restore-finding', id: string): Promise<void> {
+  const project = selected();
+  const data = reviewView?.data;
+  if (!project || !data || !reviewsApi) return;
+  const ref = { projectId: project.id, repo: data.repo, number: data.number, id };
+  const reason = document.querySelector<HTMLInputElement>(`#prReviewsDrawer [data-role="dismiss-reason"][data-id="${id}"]`)?.value ?? '';
+  const res = action === 'confirm-dismiss' ? await reviewsApi.dismiss({ ...ref, reason }) : await reviewsApi.restoreFinding(ref);
+  if (!reviewView?.data || reviewView.data !== data) return;
+  if (res?.success && res.review) {
+    reviewView.data = res.review;
+    dismissing = null;
+  } else if (action === 'confirm-dismiss') dismissing = { id, error: res?.error || 'Could not dismiss.' };
+  renderDrawer(project);
 }
 
 const shotCache = new Map<string, string>();
@@ -1070,7 +1120,7 @@ function renderReviewDrawer(project: ProjectItem, view: NonNullable<typeof revie
     { status: 'issue', title: 'Issues to fix', hint: 'Verified in the code by the judge.' },
     { status: 'needs-device', title: 'Needs a device check', hint: 'Plausible, but only a device run can settle it. Not counted and never posted as fact until verified.' },
     { status: 'noted', title: 'Also noted', hint: 'Real but minor, or below the confidence floor.' },
-    { status: 'dismissed', title: 'Dismissed', hint: 'Ruled out by the judge, with the reason.' },
+    { status: 'dismissed', title: 'Dismissed', hint: 'Ruled out by the judge, or dismissed by you. Never posted or counted.' },
   ];
   const sections = groups.map((g) => {
     const items = result.findings.filter((f) => f.status === g.status);
@@ -1724,6 +1774,16 @@ function handleClick(event: Event): void {
     target.textContent = 'Copied';
     window.setTimeout(() => (target.textContent = 'Copy'), 1500);
   }
+  else if (action === 'dismiss-finding' && project) {
+    dismissing = { id: target.getAttribute('data-id') ?? '' };
+    renderDrawer(project);
+    document.querySelector<HTMLInputElement>('#prReviewsDrawer [data-role="dismiss-reason"]')?.focus();
+  }
+  else if (action === 'cancel-dismiss' && project) {
+    dismissing = null;
+    renderDrawer(project);
+  }
+  else if (action === 'confirm-dismiss' || action === 'restore-finding') void dismissAction(action, target.getAttribute('data-id') ?? '');
   else if (posting && reviewView?.data && handlePostingAction(action, target, reviewView.data)) return;
   else if ((action === 'export-prompt' || action === 'export-report' || action === 'export-save') && reviewView?.data) {
     const data = reviewView.data;
@@ -1887,6 +1947,11 @@ function handleInput(event: Event): void {
 
 function handleKeydown(event: KeyboardEvent): void {
   const target = event.target as HTMLElement;
+  if (target.getAttribute('data-role') === 'dismiss-reason' && event.key === 'Enter') {
+    event.preventDefault();
+    void dismissAction('confirm-dismiss', target.getAttribute('data-id') ?? '');
+    return;
+  }
   if (target.getAttribute('data-role') !== 'picker-filter' || event.key !== 'Enter') return;
   event.preventDefault();
   const project = selected();

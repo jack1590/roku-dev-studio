@@ -10,6 +10,8 @@ import { estimateCents } from './pricing';
 import { adfToText, ticketKeyCandidates } from './jira';
 import { detectBuild, parseJsonc, projectFolders } from './build-detect';
 import { excerptConsole, makeRedactor, testResult, TEST_FILE } from './device';
+import { applyDismissals, dismissalPromptBlock, matchDismissal, type Dismissal } from './suppressions';
+import type { ReviewFinding } from './review';
 import { ciFindings, ciInfraFailures, ciPromptBlock, isCodeAnnotation } from './ci';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -170,6 +172,25 @@ async function deviceChecks(): Promise<void> {
   const flood = ['[RDS-PROBE] gate=1', ...Array.from({ length: 200 }, () => `curl ${'x'.repeat(2000)}`)].join('\n');
   const floodExcerpt = excerptConsole(flood);
   assert.ok(floodExcerpt.startsWith('[RDS-PROBE] gate=1') && floodExcerpt.length <= 10_000);
+}
+
+// Remembered dismissals: same file after one; anywhere in the repo after two; never CI facts.
+{
+  const d = (file: string, title: string, at = 1): Dismissal => ({ id: `${file}${at}`, file, title, at });
+  const once = [d('a.brs', 'Magic number used for row height')];
+  assert.ok(matchDismissal({ file: 'a.brs', title: 'Magic number for row height' }, once), 'reworded title on the same file');
+  assert.equal(matchDismissal({ file: 'b.brs', title: 'Magic number used for row height' }, once), undefined, 'one dismissal stays on its file');
+  const twice = [...once, d('c.brs', 'Magic number used for the row height', 2)];
+  assert.ok(matchDismissal({ file: 'b.brs', title: 'Magic number used for row height' }, twice), 'two dismissals go repo-wide');
+  assert.equal(matchDismissal({ file: 'a.brs', title: 'Unobserved field leaks the timer' }, twice), undefined, 'a different objection');
+  const f = (id: string, extra: Partial<ReviewFinding> = {}): ReviewFinding => ({ id, title: 'Magic number used for row height', detail: '', severity: 'minor', file: 'b.brs', status: 'issue', reasoning: '', sources: [], inDiff: true, ...extra });
+  const findings = [f('x'), f('ci', { ci: { check: 'lint' } })];
+  assert.equal(applyDismissals(findings, twice), 1);
+  assert.equal(findings[0].status, 'dismissed');
+  assert.equal(findings[0].userDismissed?.previousStatus, 'issue');
+  assert.equal(findings[1].status, 'issue', 'CI findings are facts');
+  assert.equal(dismissalPromptBlock([]), '');
+  assert.ok(dismissalPromptBlock(twice).indexOf('the row height') < dismissalPromptBlock(twice).indexOf('used for row height'), 'most recent first');
 }
 
 void buildChecks().then(deviceChecks).then(() => console.log('verify-review: ok'));

@@ -118,6 +118,8 @@ contextBridge.exposeInMainWorld('settingsApi', {
     ipcRenderer.invoke(IPC.ProjectsWikiPreview, input),
   projectsWikiTags: (wikiDir: string) => ipcRenderer.invoke(IPC.ProjectsWikiTags, { wikiDir }),
   projectsBuildDetect: (id: string, repo: string, root?: string) => ipcRenderer.invoke(IPC.ProjectsBuildDetect, { id, repo, root }),
+  reviewsDismissals: (repos: string[]) => ipcRenderer.invoke(IPC.ReviewsDismissals, { repos }),
+  reviewsForgetDismissal: (repo: string, id: string) => ipcRenderer.invoke(IPC.ReviewsForgetDismissal, { repo, id }),
   projectsBuildSave: (input: { id: string; repo: string; command: string; outDir: string; install: string; rootDir?: string; testCommand?: string; testOutDir?: string; detectedFrom?: string }) => ipcRenderer.invoke(IPC.ProjectsBuildSave, input),
   projectsBuildEnvSave: (id: string, repo: string, text: string) => ipcRenderer.invoke(IPC.ProjectsBuildEnvSave, { id, repo, text }),
   projectsBuildEnvClear: (id: string, repo: string) => ipcRenderer.invoke(IPC.ProjectsBuildEnvClear, { id, repo })

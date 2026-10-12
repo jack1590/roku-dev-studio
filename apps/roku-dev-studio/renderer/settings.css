@@ -1523,3 +1523,8 @@ body.privacy-mode .info-value[data-privacy="mask"]:hover {
 .projects-step-num { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 50%; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 12px; font-weight: 700; }
 .projects-step-num-done { background: var(--accent-green-dim); color: var(--accent-green); }
 .projects-build-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+
+.projects-dismissals { display: flex; flex-direction: column; gap: 6px; }
+.projects-dismissals-repo { margin: 4px 0 0; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.projects-dismissals-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.projects-dismissal { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
