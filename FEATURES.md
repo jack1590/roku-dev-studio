@@ -2,6 +2,92 @@
 
 [← Back to README](README.md)
 
+**Fork features:** [PR Reviews](#pr-reviews) · [AI review](#ai-review) · [Device checks](#device-checks) · [Posting to GitHub](#posting-to-github) · [Projects](#projects) · [Packager](#packager)
+
+**Device:** [Remote Control](#remote-control) · [Device Performance](#device-performance) · [Device Discovery](#device-discovery) · [App Launcher](#app-launcher) · [Device Queries](#device-queries) · [Remote Server](#remote-server-support)
+
+**Sideload & debug:** [Dev App](#dev-app-management) · [Try Demo App](#try-demo-app) · [Sideload Relay](#sideload-relay) · [Console](#console-debugging) · [Ports Window](#port-terminal) · [Console Monitor](#console-monitor) · [Debugger](#brightscript-debugger) · [Log File Viewer](#log-file-viewer)
+
+**Inspect & automate:** [App Connector](#app-connector) · [Network Inspector](#network-inspector) · [Network Session Viewer](#network-session-viewer) · [Action Scripts](#action-scripts) · [MCP Server](#ai-agents-mcp-server) · [BrightScript Fiddle](#brightscript-fiddle) · [Static Analysis](#static-channel-analysis) · [`rds` CLI](#rds-cli)
+
+**App:** [Settings](#settings) · [Languages](#language-switching) · [Crash Reporting](#crash-reporting) · [Developer Features](#developer-features)
+
+<a id="fork-features"></a>
+
+## Fork features
+
+Added by this fork. Every screenshot below uses demo data.
+
+<a id="pr-reviews"></a>
+
+### 🔀 PR Reviews
+- **Every repo you care about, one list:** Open pull requests from the repos you pick, across all the orgs your project's GitHub token can see. Open it from the sidebar, the title bar or the welcome screen
+- **Filters:** **Needs you** (review requested from you, or your PR has a problem), **Mine**, **Problems** (failing checks, merge conflicts, changes requested), **All**; plus a repo picker and search
+- **One state per row:** Each PR shows its most urgent state (conflicts, failing checks, review requested), its review result, branch, size and age
+- **Test device pool at a glance:** The header shows how many pool devices are ready, busy or offline
+- **Review, View review, Re-review:** Start a review, open the last one, or re-run it after new commits
+
+![PR Reviews: open pull requests with their state, review result and the device pool](docs/images/PR_REVIEWS.png)
+
+<a id="ai-review"></a>
+
+### 🧠 AI review
+- **Three lenses in parallel:** Correctness; security and data; Roku platform and maintainability (SceneGraph threads, observers, memory, focus, manifest). A lens narrows what to look for, not what can be reported
+- **A judge verifies before ruling:** It merges duplicates, opens the files to check each finding, marks it real or dismissed, and gives a 0–1 confidence. Low-severity and hedged findings are shown but not counted as work
+- **Checked against your context:** The PR's JIRA ticket (found from the description, title or branch name), linked Figma designs, CI checks with their annotations, the PR discussion, and the repo's own standards files (`AGENTS.md`, `CONTRIBUTING.md`, `.cursor/rules/`, lint and format configs). Red CI annotations count as facts, not opinions
+- **Follow-up reviews:** After new commits, only the new commits are reviewed and still-open findings carry over
+- **Remembers what you dismissed:** A finding dismissed in one PR stays dismissed in that repo's later reviews; restore it any time
+- **Honest about gaps:** A review names any reviewer it lost and flags findings in files outside the diff. Binary and oversized files are left out of the prompt and listed
+- **Cost on every review:** Tokens, run time and approximate price, per agent
+- **Take it elsewhere:** **Copy fix prompt** (for your coding agent), **Copy report**, **Save .md**
+- **Team knowledge (optional):** Feed pages from your own notes wiki into reviews, scoped per company so one client's notes never reach another's reviews
+
+![Review result: summary and ticket, finding counts, draft top comment, CI checks, and verified issues](docs/images/PR_REVIEW_RESULT.png)
+
+<a id="device-checks"></a>
+
+### 📺 Device checks
+- **When the code can't settle it:** Findings that need a real device (focus, playback, timing) are sent to a device run instead of being guessed
+- **Build, sideload, test, read the console:** The review builds the PR with the repo's build settings, sideloads it to a free pool device, runs the PR's tests and reads the console. Each round confirms or refutes findings with console evidence
+- **Limits:** Up to 5 rounds and 30 minutes per review by default (Settings → Projects → Device testing)
+- **Shared device pool:** Reviews and the Packager draw from the same pool, so a TV runs one job at a time; queued reviews wait for the next free device
+- **Per-repo builds:** Set the install command, build command, output folder and project folder for each repo; build environment variables are stored in the OS keychain
+
+<a id="posting-to-github"></a>
+
+### 💬 Posting to GitHub
+- **Drafts in your team's voice:** Each finding comes with a draft inline comment, plus a draft top comment for the PR. Edit or copy any of them
+- **You choose what goes out:** Tick the comments to post. Post them one by one with a random gap, so the PR doesn't get a wall of comments at once
+- **Replies, not repeats:** When a finding is already raised in a PR thread, the review drafts a reply to that thread instead of a new comment
+- **Suggested action is for you:** The review suggests approve, request changes or wait; it is never posted, and nothing approves or blocks a PR on its own
+
+<a id="projects"></a>
+
+### 🗂️ Projects
+- **One project per company or team** in **Settings → Projects**, each with its own GitHub, Cursor, JIRA and Figma tokens
+- **Tokens stay local:** Encrypted with the OS keychain; the UI only learns whether a token is set. **Test** checks each one (for GitHub: the account, the orgs and repos it can see, and any org it skipped)
+- **Readiness checklist:** Shows what a project still needs before it can review
+- **Models per role:** Pick the model for each reviewer and the judge, or **Use recommended models**
+- **Review instructions:** Team rules added to every review prompt (credentials are refused)
+
+![Settings → Projects: readiness checklist and the review models per lens](docs/images/SETTINGS_PROJECTS.png)
+
+<a id="packager"></a>
+
+### 📦 Packager
+- **One click from source to signed `.pkg`:** Sends the device home, builds, checks the build, rekeys the device, deploys, signs and saves the package, with each step's progress and a live log
+- **Nothing to install:** Wraps the bundled [`roku-pkg-cli`](https://github.com/jack1590/roku-pkg-cli), run with the app's own Node
+- **Pre-flight checks:** Device reachable, dev password saved, signed package found, sign key set — each with a **Fix** link when it isn't
+- **Build choice per run:** Run a build task from the project, use an existing build, or skip the build. **Skip rekey** when the device is already keyed; **Package only** when the app is already on it
+- **Key mismatch, handled:** When the device is keyed for another developer ID, it explains why and offers **Rekey and try again**
+- **History:** The last runs per project, with the version, size, build task, and why a run failed
+- **Shared with the terminal:** Projects live in roku-pkg's `~/.roku-pkg/config.json`, so the CLI and the app see the same list. Sign keys and device passwords never reach the window
+- **Add / edit drawer:** Pick a folder and the app detects the manifest and build tasks
+
+![Packager: project rail, device, signing and output, with pre-flight checks](docs/images/PACKAGER.png)
+
+## Upstream features
+
 <a id="remote-control"></a>
 
 ### 🎮 Remote Control
@@ -114,7 +200,12 @@
 - **Crashes & Issues:** Crashes show severity and full backtrace with a **Copy Crash + Backtrace** action; clicking an issue or an occurrence row jumps straight to the matching line in the log
 - **Works live and on saved logs:** Available from both the Console tab and the Log File Viewer via the **Monitor** button
 - **Launch & performance beacons:** A **Performance** section pairs Roku's `[beacon.signal]` Initiate / Complete lines into durations for App Compile, App Launch, Dialog Launch, EPG Launch, Video Start, Live Start, Channel Change, and Channel Exit — flagging an EPG launch beyond the 5 s certification window
-| ![Console Monitor — grouped issues by category with per-group counts](docs/images/CONSOLE_MONITOR.png) |
+
+
+![Console Monitor — grouped issues by category with per-group counts](docs/images/CONSOLE_MONITOR.png)
+
+| Issue detail | Jump to the log line |
+|:---:|:---:|
 | ![Console Monitor — expanded issue with What / Cause / Fix guidance and occurrences](docs/images/CONSOLE_MONITOR_ISSUE_DETAIL.png) | ![Console Monitor — clicking an occurrence jumps straight to that line in the log](docs/images/CONSOLE_MONITOR_JUMP_TO_LOG.png) |
 
 <a id="brightscript-debugger"></a>
@@ -237,9 +328,10 @@ Setup instructions (running the relay server, opening the port, connecting from 
 <a id="settings"></a>
 
 ### ⚙️ Settings
-Open with `Ctrl/Cmd+,` (or *Roku Dev Studio → Settings* on macOS, *File → Settings* on Windows / Linux). Seven sections:
+Open with `Ctrl/Cmd+,` (or *Roku Dev Studio → Settings* on macOS, *File → Settings* on Windows / Linux). Eight sections:
 
 - **General:** Developer Mode, Privacy Mode (mask IPs / serials), Debug Logging to file, Roku Remote - Use Keyboard, Auto Connect to Devices, Auto Hide SideBar, Language, Show Try Demo App Button, Show Crash Reports
+- **Projects** *(fork)*: Tokens, review models, team knowledge and device testing per project — see [Projects](#projects)
 - **Action Scripts:** Default folder for run artifacts (screenshots, exported PDFs)
 - **Device Performance:** Chart sample interval, chart history window, *Remember 'Show Device Performance'* per device
 - **Timing & Network:** Connection / query / telnet timeouts and other knobs (with *Reset to Defaults*)
