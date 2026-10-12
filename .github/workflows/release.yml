@@ -112,14 +112,28 @@ jobs:
       - name: Build mcp (its CI-guarded prepare did not run)
         run: npm run build -w roku-dev-studio-mcp
 
-      - name: Require macOS signing + notarization secrets
-        # Without these electron-builder silently emits an ad-hoc-signed, un-notarized app while
-        # the release body below promises a notarized one. See RELEASE_SETUP.md → Code Signing.
+      - name: Choose macOS signing mode
+        # All five secrets set: Developer ID signing + notarization. None set: an ad-hoc-signed,
+        # un-notarized build (users open it with right-click → Open, and in-app updates on macOS
+        # become a manual download). A partial set is a mistake, so it fails.
+        # See RELEASE_SETUP.md → Code Signing.
         if: runner.os == 'macOS'
         run: |
+          set_count=0
           for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            [ -n "${!v}" ] || { echo "::error::Missing repository secret: $v"; exit 1; }
+            [ -n "${!v}" ] && set_count=$((set_count + 1))
           done
+          if [ "$set_count" -eq 5 ]; then
+            echo "macOS: signed + notarized build"
+          elif [ "$set_count" -eq 0 ]; then
+            echo "::warning::No macOS signing secrets: building an unsigned (ad-hoc) app"
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            # identity must stay last: electron-builder's CLI misreads `=-` when another flag follows.
+            echo "MAC_BUILD_ARGS=-c.mac.notarize=false -c.mac.identity=-" >> "$GITHUB_ENV"
+          else
+            echo "::error::Only $set_count of the 5 macOS signing secrets are set. Set all five or none."
+            exit 1
+          fi
 
       - name: Build desktop app
         # `build:mac|win|linux` chains build:bundle (transpile
@@ -130,7 +144,9 @@ jobs:
         # in the `release` job below is the sole uploader. (Nulling out `build.publish` instead
         # of using `--publish never` also suppresses those YAML files entirely, breaking
         # electron-updater's runtime checkForUpdates() with an ENOENT — don't do that.)
-        run: npm run ${{ matrix.build-cmd }}
+        # Two `--`: the root script calls `npm --prefix apps/roku-dev-studio run …`, so the args must pass
+        # through both npm layers to reach electron-builder. Empty on Windows, Linux and signed macOS.
+        run: npm run ${{ matrix.build-cmd }} -- -- $MAC_BUILD_ARGS
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -194,6 +210,7 @@ jobs:
         # (`npm run verify:artifact-names` prints them and guards against collisions).
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
+          MAC_SIGNED: ${{ secrets.CSC_LINK != '' }}
         run: |
           # shellcheck disable=SC2016  # the backticks in printf's format are literal markdown, not expansion
           {
@@ -227,7 +244,15 @@ jobs:
           1. Download the `.dmg` file
           2. Open the disk image
           3. Drag the app to your Applications folder
-          4. Open the app — it is signed with a Developer ID certificate and notarized by Apple, so Gatekeeper opens it without any override.
+          EOF
+            if [ "$MAC_SIGNED" = "true" ]; then
+              echo "4. Open the app — it is signed with a Developer ID certificate and notarized by Apple, so Gatekeeper opens it without any override."
+            else
+              echo '4. The app is not notarized. The first time, right-click it in Applications and choose **Open**, then **Open** again. If macOS says it is damaged, run `xattr -cr "/Applications/Roku Dev Studio.app"` in Terminal.'
+              echo
+              echo '**Note for macOS:** in-app updates show a download link instead of installing by themselves.'
+            fi
+            cat <<'EOF'
 
           **Windows**
           1. Download the **Setup** `.exe` file

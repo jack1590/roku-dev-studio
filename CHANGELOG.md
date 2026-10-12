@@ -21,6 +21,7 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 
 ### Changed
 - Update checks, release notes, "Report issue" and About links point at this repo.
+- **macOS builds are ad-hoc signed, not notarized.** Open the app the first time with right-click → **Open** (or run `xattr -cr "/Applications/Roku Dev Studio.app"` if macOS says it is damaged). On macOS the update banner links to the release instead of installing, because Squirrel.Mac only installs updates signed by the same Developer ID. Windows and Linux update in-app as before. The release workflow signs and notarizes again once the five Apple secrets are set.
 
 ## [1.3.0]
 

@@ -7,7 +7,7 @@ This guide explains how to automatically build and release your Roku Dev Studio 
 - **Node.js 24.17 or newer** — both workflows pin `node-version: 24.17.0`, and the workspace packages declare `engines.node >= 24.17.0`.
 - **App icons** are checked in at `apps/roku-dev-studio/assets/icon.icns` (macOS) and `assets/icon.ico` (Windows), with their sources in `icon.iconset/` and `ico-parts/` (PNG sizes rendered by `apps/roku-dev-studio/scripts/generate-icons.ts`). Nothing to create.
 - **Hardened-runtime entitlements** are checked in at `apps/roku-dev-studio/entitlements.mac.plist` and wired through `build.mac.entitlements` / `entitlementsInherit`.
-- **Repository secrets** for macOS signing + notarization — see [Code Signing](#code-signing) below. The mac release job fails fast without them.
+- **Repository secrets** for macOS signing + notarization are optional — see [Code Signing](#code-signing) below. Without them the Mac app is built unsigned (ad-hoc).
 
 ## How to Create a Release
 
@@ -35,7 +35,7 @@ git push origin 1.1.0
 ```
 
 The GitHub Action will automatically:
-1. Build the macOS app (DMG + zip, Apple Silicon only — signed and notarized)
+1. Build the macOS app (DMG + zip, Apple Silicon only — signed and notarized when the signing secrets are set, otherwise ad-hoc signed)
 2. Build the Windows app (Installer + Portable)
 3. Build the Linux app (`.deb` and `.AppImage` for x64 and arm64)
 4. Create a GitHub Release with all files attached, named `Roku Dev Studio v1.1.0` and pointing at whichever tag you pushed.
@@ -110,7 +110,7 @@ The **Downloads** table in the release body is **generated at release time from 
 1. Download the `.dmg` file (Apple Silicon)
 2. Open the disk image
 3. Drag the app to your Applications folder
-4. Open the app — it is signed with a Developer ID certificate and notarized by Apple, so Gatekeeper opens it without any override.
+4. Open the app. A signed + notarized build opens directly. An unsigned build needs right-click → **Open** the first time (or `xattr -cr "/Applications/Roku Dev Studio.app"` if macOS says it is damaged), and its in-app updates show a download link instead of installing.
 
 **Windows**
 1. Download the **Setup** `.exe` file
@@ -134,7 +134,7 @@ The **Downloads** table in the release body is **generated at release time from 
 - Check file permissions
 
 ### macOS app shows "damaged" on user's machine
-- Release builds are signed + notarized, so this means the build ran without a Developer ID — a local `npm run build:mac` with no certificate (the release workflow fails fast if its secrets are missing)
+- The build is not notarized: either a release built without the signing secrets, or a local `npm run build:mac` with no certificate
 - Verify: `spctl -a -vv -t exec "/Applications/Roku Dev Studio.app"` should print `source=Notarized Developer ID`
 - Workaround for an unsigned build: `xattr -cr "/Applications/Roku Dev Studio.app"`
 
@@ -144,7 +144,11 @@ The **Downloads** table in the release body is **generated at release time from 
 
 ## Code Signing
 
-### macOS (required — the mac release job fails without these)
+### macOS (optional)
+
+Without these secrets the release job builds an ad-hoc-signed, un-notarized Mac app (`-c.mac.identity=-`), and the release notes give users the right-click → Open steps. In-app updates on macOS then become a manual download, because Squirrel.Mac only installs updates signed by the same Developer ID. Set all five secrets or none: a partial set fails the job.
+
+To sign:
 1. Get an Apple Developer account ($99/year) and create a "Developer ID Application" certificate; export it from Keychain Access as `.p12`
 2. Create an [app-specific password](https://appleid.apple.com/account/manage) for your Apple ID
 3. Add repository secrets (Settings → Secrets and variables → Actions):
@@ -165,7 +169,7 @@ electron-builder signs, notarizes via `notarytool` and staples the ticket itself
 
 ## Quick Start Checklist
 
-- [ ] Add the five macOS signing / notarization secrets (see [Code Signing](#code-signing))
+- [ ] Optional: add the five macOS signing / notarization secrets (see [Code Signing](#code-signing))
 - [ ] Bump `version` in `apps/roku-dev-studio/package.json` (and in any package that changed); add the release notes to `CHANGELOG.md`
 - [ ] `npm run verify:artifact-names -w roku-dev-studio` passes
 - [ ] Push to GitHub

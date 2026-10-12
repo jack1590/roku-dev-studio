@@ -66,7 +66,7 @@ Builds for macOS, Windows, and Linux simultaneously.
 
 ### macOS — code signing & notarization
 
-`build.mac` in `apps/roku-dev-studio/package.json` ships with `hardenedRuntime: true` and `notarize: true`: electron-builder signs with the Developer ID Application identity it finds, submits the `.app` to Apple's `notarytool`, and staples the ticket before the DMG/zip are packed. Both steps are skipped (with a warning) when the inputs below are missing, leaving an ad-hoc-signed build whose users must clear quarantine before launching:
+`build.mac` in `apps/roku-dev-studio/package.json` ships with `hardenedRuntime: true` and `notarize: true`: electron-builder signs with the Developer ID Application identity it finds, submits the `.app` to Apple's `notarytool`, and staples the ticket before the DMG/zip are packed. Both steps are skipped (with a warning) when the inputs below are missing. That build has an invalid signature, so macOS calls it damaged; for a working unsigned build, sign it ad-hoc the way the release workflow does (`CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac -- -- -c.mac.notarize=false -c.mac.identity=-`, identity last). Users of an unsigned build must clear quarantine before launching:
 
 ```bash
 xattr -cr "/Applications/Roku Dev Studio.app"

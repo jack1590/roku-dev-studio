@@ -14,6 +14,7 @@ import { classifyUpdaterError, isMissingMetadataError, type UpdaterErrorReason }
 import { mainError, mainWarn } from './log.js';
 
 const path = require('path');
+const { execFile } = require('child_process');
 const GITHUB_OWNER = 'jack1590';
 const GITHUB_REPO = 'roku-dev-studio';
 const LATEST_RELEASE_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
@@ -315,12 +316,25 @@ export function setupAutoUpdater(
     applyStatus({ type: 'checking' }, broadcast);
   });
 
+  // Squirrel.Mac only installs an update signed by the same Developer ID as the running app, so an
+  // unsigned (ad-hoc) Mac build can only update by hand. Checked once; other platforms always can.
+  let macSelfUpdate: Promise<boolean> | undefined;
+  function canSelfUpdate(): Promise<boolean> {
+    if (process.platform !== 'darwin' || !app.isPackaged) return Promise.resolve(true);
+    macSelfUpdate ??= new Promise((resolve) => {
+      const bundle = path.resolve(app.getPath('exe'), '..', '..', '..');
+      execFile('codesign', ['-dv', bundle], (_err: unknown, _out: string, stderr: string) =>
+        resolve(/TeamIdentifier=(?!not set)\S/.test(String(stderr))));
+    });
+    return macSelfUpdate;
+  }
+
   autoUpdater.on('update-available', (info) => {
     // Update exists — the banner surfaces it, so no "no update" toast is needed.
     consumeUserInitiated();
     const version = String(info.version);
-    void isUpdateAssetDownloadable(info).then((downloadable) => {
-      applyStatus({ type: 'available', version, needsManualDownload: !downloadable }, broadcast);
+    void Promise.all([isUpdateAssetDownloadable(info), canSelfUpdate()]).then(([downloadable, selfUpdate]) => {
+      applyStatus({ type: 'available', version, needsManualDownload: !downloadable || !selfUpdate }, broadcast);
     });
   });
 

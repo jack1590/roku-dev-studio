@@ -105,7 +105,7 @@
 <section class="doc-section" id="platform-notes">
   <h2>Per-platform notes</h2>
   <h3>macOS — code signing &amp; notarization</h3>
-  <p>Release builds are signed with a Developer ID Application certificate and notarized by Apple. <code>electron-builder</code> does both natively (<code>build.mac.notarize: true</code>) when it finds a signing identity plus notarytool credentials, and staples the ticket into the <code>.app</code>. Without them it emits an ad-hoc-signed build and end users need to clear quarantine before launching:</p>
+  <p>Release builds are currently ad-hoc signed, not notarized: open the app the first time with right-click → <strong>Open</strong>, and on macOS in-app updates show a download link. With a Developer ID Application certificate, <code>electron-builder</code> signs and notarizes natively (<code>build.mac.notarize: true</code>) when it finds a signing identity plus notarytool credentials, and staples the ticket into the <code>.app</code>. Without them it emits an ad-hoc-signed build and end users need to clear quarantine before launching:</p>
   <pre><code>xattr -cr "/Applications/Roku Dev Studio.app"</code></pre>
   <p>Certificate import, notarytool credentials and the GitHub Actions secrets are documented in the repo's <a href="https://github.com/jack1590/roku-dev-studio/blob/main/INSTALLATION.md#macos--code-signing--notarization" target="_blank" rel="noopener noreferrer">INSTALLATION.md</a>.</p>
 
