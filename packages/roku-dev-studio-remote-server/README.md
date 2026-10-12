@@ -2,7 +2,7 @@
 
 A lightweight Node.js server that runs on a computer at a remote location so the **Roku Dev Studio** desktop app can control Roku devices over the network. The server discovers Rokus on its own LAN and exposes an HTTP/WebSocket bridge that mirrors all Roku ECP (External Control Protocol) functionality, plus telnet relay and RALE / App Connector access.
 
-> Part of [Roku Dev Studio](https://paramount-engineering.github.io/roku-dev-studio/) — see the [main repo](https://github.com/paramount-engineering/roku-dev-studio) for the desktop app, MCP server, and other packages.
+> Part of [Roku Dev Studio](https://jack1590.github.io/roku-dev-studio/) — see the [main repo](https://github.com/jack1590/roku-dev-studio) for the desktop app, MCP server, and other packages.
 
 ## Requirements
 
@@ -23,7 +23,7 @@ roku-remote-server 4000     # or pick a port
 **Option B — From source (full repo clone):**
 
 ```bash
-git clone https://github.com/paramount-engineering/roku-dev-studio.git
+git clone https://github.com/jack1590/roku-dev-studio.git
 cd roku-dev-studio
 npm install
 npm run remote-server       # root script — listens on 4951 by default
@@ -147,7 +147,7 @@ The server includes interactive API documentation powered by Swagger/OpenAPI 3.0
 
 **Access Swagger UI:** `http://localhost:4951/api-docs`
 
-![Swagger UI at /api-docs](https://raw.githubusercontent.com/paramount-engineering/roku-dev-studio/main/docs/images/REMOTE_SERVER_SWAGGER.png)
+![Swagger UI at /api-docs](https://raw.githubusercontent.com/jack1590/roku-dev-studio/main/docs/images/REMOTE_SERVER_SWAGGER.png)
 
 The Swagger UI provides:
 - Interactive API explorer (Health, Capabilities, Discovery, Device Info, Remote Control, RALE …)

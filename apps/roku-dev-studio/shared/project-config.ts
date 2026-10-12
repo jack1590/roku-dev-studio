@@ -1,6 +1,6 @@
 /**
- * A project is a company or team: a name plus its own tokens (GitHub, JIRA, Figma).,
- * the GitHub token decides which repos are available: the account's own repos plus every org it
+ * A project is a company or team: a name plus its own tokens (GitHub, JIRA, Figma). The
+ * GitHub token decides which repos are available: the account's own repos plus every org it
  * belongs to. Projects are stored in the app registry, not in a repo, so no folder is needed.
  *
  * Tokens never live here. They are stored encrypted by `main/project-token-store.ts`.

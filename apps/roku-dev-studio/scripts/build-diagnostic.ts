@@ -20,7 +20,7 @@ const env = { ...process.env, RDS_DIAGNOSTIC_BUILD: '1' };
 
 const DIAGNOSTIC_FLAGS = [
   '-c.productName=Roku Dev Studio Diagnostic',
-  '-c.appId=com.paramount.vtg.roku-dev-studio.diagnostic',
+  '-c.appId=com.jack1590.roku-dev-studio.diagnostic',
   '-c.extraMetadata.diagnosticBuild=true'
 ];
 

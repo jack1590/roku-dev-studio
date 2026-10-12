@@ -2,23 +2,23 @@
 
 > A free, open-source (MIT) desktop application for macOS, Windows, and Linux that controls and develops on Roku devices — Remote Control, Device Discovery, App Sideloading, Network Inspection (local MITM HTTPS proxy), a socket-based BrightScript Debugger, Action Scripts automation, an MCP server for AI agents, and a `rds` terminal CLI. Works on the local network, over the internet via a bundled remote Relay Server, or against cloud-hosted virtual Rokus from a Roku Cloud Emulator (RCE) account.
 
-Built by Paramount Engineering. Roku Dev Studio replaces terminal-only, IDE-locked Roku tooling with a single GUI: discover devices over SSDP, sideload and deep-link channels, inspect decrypted HTTPS traffic, attach a real socket debugger (breakpoints, step execution, variables), automate end-to-end test flows with Action Scripts, and let AI agents (Claude, Cursor, VS Code) drive a real device over MCP — all controllable locally, through a remote Relay Server for devices at other physical locations, or on Roku Cloud Emulator (RCE) virtual devices.
+Fork of [paramount-engineering/roku-dev-studio](https://github.com/paramount-engineering/roku-dev-studio), maintained by jack1590, that adds AI PR review, device-verified testing, and a Roku packager. Roku Dev Studio replaces terminal-only, IDE-locked Roku tooling with a single GUI: discover devices over SSDP, sideload and deep-link channels, inspect decrypted HTTPS traffic, attach a real socket debugger (breakpoints, step execution, variables), automate end-to-end test flows with Action Scripts, and let AI agents (Claude, Cursor, VS Code) drive a real device over MCP — all controllable locally, through a remote Relay Server for devices at other physical locations, or on Roku Cloud Emulator (RCE) virtual devices.
 
 ## Docs
 
-- [Home](https://paramount-engineering.github.io/roku-dev-studio/): Overview, screenshots, and supported platforms
-- [Features](https://paramount-engineering.github.io/roku-dev-studio/features.html): Full feature tour — Remote Control, Device Performance, Device Discovery, App Launcher & Management, Device Queries, Dev App Management, Sideload Relay, Console & Debugging, BrightScript Debugger, App Connector (RALE), Network Inspector, Network Session Viewer, Action Scripts, AI Agents (MCP Server), BrightScript Fiddle, Log File Viewer, Static Channel Analysis, rds CLI, Remote Server, Roku Cloud Emulator, Settings, and Developer Features
-- [Install](https://paramount-engineering.github.io/roku-dev-studio/install.html): Quick start for development, building distributable apps per platform, and troubleshooting
-- [MCP](https://paramount-engineering.github.io/roku-dev-studio/mcp.html): The bundled MCP server — full tool/resource/prompt catalog, how agents connect (Cursor, Claude Desktop, VS Code), and security notes
-- [MCP Tool Reference](https://paramount-engineering.github.io/roku-dev-studio/mcp-tools.html): Every MCP tool with its input schema and (where declared) response schema, generated straight from source
-- [Remote Server & Cloud Emulator](https://paramount-engineering.github.io/roku-dev-studio/remote-server.html): Part 1 — RDS Relay Server architecture, setup, capabilities, and Swagger/OpenAPI reference; Part 2 — Roku Cloud Emulator (RCE) accounts and virtual devices
+- [Home](https://jack1590.github.io/roku-dev-studio/): Overview, screenshots, and supported platforms
+- [Features](https://jack1590.github.io/roku-dev-studio/features.html): Full feature tour — Remote Control, Device Performance, Device Discovery, App Launcher & Management, Device Queries, Dev App Management, Sideload Relay, Console & Debugging, BrightScript Debugger, App Connector (RALE), Network Inspector, Network Session Viewer, Action Scripts, AI Agents (MCP Server), BrightScript Fiddle, Log File Viewer, Static Channel Analysis, rds CLI, Remote Server, Roku Cloud Emulator, Settings, and Developer Features
+- [Install](https://jack1590.github.io/roku-dev-studio/install.html): Quick start for development, building distributable apps per platform, and troubleshooting
+- [MCP](https://jack1590.github.io/roku-dev-studio/mcp.html): The bundled MCP server — full tool/resource/prompt catalog, how agents connect (Cursor, Claude Desktop, VS Code), and security notes
+- [MCP Tool Reference](https://jack1590.github.io/roku-dev-studio/mcp-tools.html): Every MCP tool with its input schema and (where declared) response schema, generated straight from source
+- [Remote Server & Cloud Emulator](https://jack1590.github.io/roku-dev-studio/remote-server.html): Part 1 — RDS Relay Server architecture, setup, capabilities, and Swagger/OpenAPI reference; Part 2 — Roku Cloud Emulator (RCE) accounts and virtual devices
 
 ## Source (plain Markdown)
 
-- [README](https://github.com/paramount-engineering/roku-dev-studio/blob/main/README.md): Repository overview, workspace layout, and setup
-- [FEATURES.md](https://github.com/paramount-engineering/roku-dev-studio/blob/main/FEATURES.md): Detailed feature reference
-- [INSTALLATION.md](https://github.com/paramount-engineering/roku-dev-studio/blob/main/INSTALLATION.md): Full setup and build guide, including the monorepo layout and CI release pipeline
-- [Remote server package README](https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-remote-server/README.md): Full REST API endpoint reference and service-install instructions
+- [README](https://github.com/jack1590/roku-dev-studio/blob/main/README.md): Repository overview, workspace layout, and setup
+- [FEATURES.md](https://github.com/jack1590/roku-dev-studio/blob/main/FEATURES.md): Detailed feature reference
+- [INSTALLATION.md](https://github.com/jack1590/roku-dev-studio/blob/main/INSTALLATION.md): Full setup and build guide, including the monorepo layout and CI release pipeline
+- [Remote server package README](https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-remote-server/README.md): Full REST API endpoint reference and service-install instructions
 
 ## Packages (npm)
 
@@ -27,11 +27,10 @@ Built by Paramount Engineering. Roku Dev Studio replaces terminal-only, IDE-lock
 
 ## MCP server
 
-- [MCP server source](https://github.com/paramount-engineering/roku-dev-studio/tree/main/packages/roku-dev-studio-mcp): Bundled MCP server that lets Cursor, Claude Desktop, and VS Code drive a real Roku device through the app
-- [Glama listing](https://glama.ai/mcp/servers/paramount-engineering/roku-dev-studio): MCP server directory listing and quality score
+- [MCP server source](https://github.com/jack1590/roku-dev-studio/tree/main/packages/roku-dev-studio-mcp): Bundled MCP server that lets Cursor, Claude Desktop, and VS Code drive a real Roku device through the app
 - [MCP Market listing](https://mcpmarket.com/server/roku-dev-studio): MCP server directory listing
 
 ## Optional
 
-- [GitHub repository](https://github.com/paramount-engineering/roku-dev-studio): Full source code
-- [LICENSE](https://github.com/paramount-engineering/roku-dev-studio/blob/main/LICENSE): MIT License
+- [GitHub repository](https://github.com/jack1590/roku-dev-studio): Full source code
+- [LICENSE](https://github.com/jack1590/roku-dev-studio/blob/main/LICENSE): MIT License

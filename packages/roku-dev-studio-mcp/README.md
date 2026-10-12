@@ -2,7 +2,7 @@
 
 Model Context Protocol (MCP) server that lets AI agents (Cursor, Claude Desktop, VS Code, …) drive a Roku from inside their chat. Ships bundled with the Roku Dev Studio Electron app. Users do not install it directly — they enable it from **Settings → MCP Server** in Dev Studio, which writes the launch config (`command`, `args`, `env`) into the supported client app(s).
 
-> Part of [Roku Dev Studio](https://paramount-engineering.github.io/roku-dev-studio/) — see the [main repo](https://github.com/paramount-engineering/roku-dev-studio) for the desktop app and the rest of the monorepo. Also listed on [Glama](https://glama.ai/mcp/servers/paramount-engineering/roku-dev-studio) and [MCP Market](https://mcpmarket.com/server/roku-dev-studio).
+> Part of [Roku Dev Studio](https://jack1590.github.io/roku-dev-studio/) — see the [main repo](https://github.com/jack1590/roku-dev-studio) for the desktop app and the rest of the monorepo. Also listed on [Glama](https://glama.ai/mcp/servers/jack1590/roku-dev-studio) and [MCP Market](https://mcpmarket.com/server/roku-dev-studio).
 
 ![Settings → MCP Server panel](../../docs/images/SETTINGS_MCP_SERVER.png)
 

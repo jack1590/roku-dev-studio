@@ -1,8 +1,8 @@
 /**
  * Projects section (Settings window).
  *
- * A project is a company or team: a name plus its own token rows (GitHub, JIRA, Figma). Like
- * , the GitHub token decides which repos are available: its own repos plus every org it
+ * A project is a company or team: a name plus its own token rows (GitHub, JIRA, Figma). The
+ * GitHub token decides which repos are available: its own repos plus every org it
  * belongs to. Tokens are write-only here: the input is cleared after save, and the UI only
  * learns whether a token exists.
  */
@@ -64,7 +64,7 @@ interface ReviewDraft {
 
 type ExtraField = { name: 'jiraSite' | 'jiraEmail' | 'figmaTestUrl'; label: string; placeholder: string };
 
-/** Non-secret fields that sit next to a service's token.  needs these to call the service. */
+/** Non-secret fields that sit next to a service's token. Needed to call the service. */
 const EXTRA_FIELDS: Partial<Record<ProjectTokenService, ExtraField[]>> = {
   jira: [
     { name: 'jiraSite', label: 'JIRA site URL', placeholder: 'https://acme.atlassian.net' },
@@ -89,7 +89,7 @@ const SERVICE_LABELS: Record<ProjectTokenService, string> = {
 
 type HintPart = string | { code: string } | { link: string; label: string };
 
-/** How to create each token. Same guidance  gives, with links that open outside the app. */
+/** How to create each token. With links that open outside the app. */
 const TOKEN_HINTS: Record<ProjectTokenService, HintPart[]> = {
   github: [
     'Create a classic personal access token at ',
@@ -690,7 +690,7 @@ function renderAddForm(): HTMLElement {
       h('input', { type: 'text', name, placeholder, value: addDraft, autocomplete: 'off', spellcheck: 'false', class: 'projects-text-input' }),
     ]);
   return h('form', { class: 'projects-add-form', 'data-role': 'add-form' }, [
-    field('Project name', 'name', 'e.g. Globex'),
+    field('Project name', 'name', 'e.g. Acme'),
     h('p', { class: 'projects-hint' }, [
       'Name the company or team. After adding it, save a GitHub token: its repos and every org it belongs to become available in PR Reviews.',
     ]),
@@ -708,7 +708,7 @@ function renderEditForm(project: ProjectItem): HTMLElement {
       h('input', { type: 'text', name, value, placeholder, autocomplete: 'off', spellcheck: 'false', class: 'projects-text-input' }),
     ]);
   return h('form', { class: 'projects-add-form', 'data-role': 'edit-form' }, [
-    field('Project name', 'name', project.name, 'e.g. Globex'),
+    field('Project name', 'name', project.name, 'e.g. Acme'),
     h('p', { class: 'projects-hint' }, ['Saved tokens and repos stay with this project when you rename it.']),
     h('div', { class: 'projects-add-actions' }, [
       h('button', { type: 'button', class: 'btn btn-secondary btn-sm', 'data-action': 'cancel-edit' }, ['Cancel']),

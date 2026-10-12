@@ -33,7 +33,7 @@ interface UpdaterStatus {
 
 const BANNER_ID = 'rds-update-banner';
 const BANNER_CLASS = 'rds-update-banner';
-const LATEST_RELEASE_URL = 'https://github.com/paramount-engineering/roku-dev-studio/releases/latest';
+const LATEST_RELEASE_URL = 'https://github.com/jack1590/roku-dev-studio/releases/latest';
 const RELEASE_NOTES_MODAL_ID = 'rds-release-notes-modal';
 
 type LatestReleaseInfo = {

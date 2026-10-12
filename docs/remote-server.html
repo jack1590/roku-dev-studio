@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Remote Server — Roku Dev Studio</title>
 <meta name="description" content="Control Roku devices over the internet with the Roku Dev Studio remote server bridge — setup, architecture, API endpoints, and Swagger docs.">
-<link rel="canonical" href="https://paramount-engineering.github.io/roku-dev-studio/remote-server.html">
+<link rel="canonical" href="https://jack1590.github.io/roku-dev-studio/remote-server.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Roku Dev Studio">
 <meta property="og:title" content="Remote Server — Roku Dev Studio">
 <meta property="og:description" content="Control Roku devices over the internet with the Roku Dev Studio remote server bridge — setup, architecture, API endpoints, and Swagger docs.">
-<meta property="og:url" content="https://paramount-engineering.github.io/roku-dev-studio/remote-server.html">
-<meta property="og:image" content="https://paramount-engineering.github.io/roku-dev-studio/images/og-image.png">
+<meta property="og:url" content="https://jack1590.github.io/roku-dev-studio/remote-server.html">
+<meta property="og:image" content="https://jack1590.github.io/roku-dev-studio/images/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Remote Server — Roku Dev Studio">
 <meta name="twitter:description" content="Control Roku devices over the internet with the Roku Dev Studio remote server bridge — setup, architecture, API endpoints, and Swagger docs.">
-<meta name="twitter:image" content="https://paramount-engineering.github.io/roku-dev-studio/images/og-image.png">
+<meta name="twitter:image" content="https://jack1590.github.io/roku-dev-studio/images/og-image.png">
 <link rel="icon" href="images/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -38,7 +38,7 @@
         <a href="install.html">Install</a>
         <a href="mcp.html">MCP</a>
         <a href="remote-server.html" class="active">Remote Server</a>
-        <a href="https://github.com/paramount-engineering/roku-dev-studio" class="nav-cta" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/jack1590/roku-dev-studio" class="nav-cta" target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
       <button class="theme-toggle" aria-label="Toggle theme" title="Theme: System (click to change)"><svg class="icon" width="16" height="16"><use href="assets/icons.svg#icon-devices"></use></svg></button>
       <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><svg class="icon" width="16" height="16"><use href="assets/icons.svg#icon-menu"></use></svg></button>
@@ -82,7 +82,7 @@
     <details class="panel" open>
       <summary>Option A — from this repo</summary>
       <div class="panel-body">
-        <pre><code>git clone https://github.com/paramount-engineering/roku-dev-studio.git
+        <pre><code>git clone https://github.com/jack1590/roku-dev-studio.git
 cd roku-dev-studio
 npm install
 npm run remote-server     # listens on port 4951 by default</code></pre>
@@ -150,7 +150,7 @@ roku-remote-server        # or: roku-remote-server 4951</code></pre>
     <li><strong>Linux:</strong> a systemd unit (<code>roku-remote-server.service</code>)</li>
     <li><strong>Windows:</strong> run at logon via Task Scheduler, or wrap with <a href="https://nssm.cc/" target="_blank" rel="noopener noreferrer">NSSM</a></li>
   </ul>
-  <p>Full step-by-step service setup, the complete API endpoint reference, and security considerations are in the <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-remote-server/README.md" target="_blank" rel="noopener noreferrer">remote server package README</a>.</p>
+  <p>Full step-by-step service setup, the complete API endpoint reference, and security considerations are in the <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-remote-server/README.md" target="_blank" rel="noopener noreferrer">remote server package README</a>.</p>
 </section>
 </div>
 
@@ -168,7 +168,7 @@ roku-remote-server        # or: roku-remote-server 4951</code></pre>
     <div class="feature-card"><h4><svg class="icon" width="16" height="16"><use href="assets/icons.svg#icon-terminal"></use></svg> Console &amp; Debugger</h4><p>Telnet, the debugger, and RALE over the device&#39;s ports bridge</p></div>
     <div class="feature-card"><h4><svg class="icon" width="16" height="16"><use href="assets/icons.svg#icon-devices"></use></svg> Screen Relay</h4><p>Live device video with volume and mute, plus a screenshots gallery</p></div>
   </div>
-  <p>Client library: <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-rce/README.md" target="_blank" rel="noopener noreferrer">roku-dev-studio-rce</a> (Core API + Device API).</p>
+  <p>Client library: <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-rce/README.md" target="_blank" rel="noopener noreferrer">roku-dev-studio-rce</a> (Core API + Device API).</p>
 </section>
 </div>
 
@@ -178,17 +178,17 @@ roku-remote-server        # or: roku-remote-server 4951</code></pre>
   <div class="container">
     <div class="footer-brand">
       <div>
-        <a class="footer-org" href="https://github.com/paramount-engineering" target="_blank" rel="noopener noreferrer">Paramount Engineering</a> ·
-        <a class="footer-org" href="https://github.com/paramount-engineering/roku-dev-studio" target="_blank" rel="noopener noreferrer">Roku Dev Studio</a>
+        <a class="footer-org" href="https://github.com/jack1590" target="_blank" rel="noopener noreferrer">jack1590</a> ·
+        <a class="footer-org" href="https://github.com/jack1590/roku-dev-studio" target="_blank" rel="noopener noreferrer">Roku Dev Studio</a> (fork of <a href="https://github.com/paramount-engineering/roku-dev-studio" target="_blank" rel="noopener noreferrer">paramount-engineering/roku-dev-studio</a>)
       </div>
       <div class="footer-sub">
-        <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a> ·
+        <a href="https://github.com/jack1590/roku-dev-studio/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a> ·
         <a href="https://github.com/hdonapati" target="_blank" rel="noopener noreferrer">created by Hareendra Donapati</a>
       </div>
     </div>
     <div class="footer-brand footer-packages">
-      <div><a href="https://github.com/paramount-engineering/roku-dev-studio/tree/main/packages/roku-dev-studio-remote-server" target="_blank" rel="noopener noreferrer"><code>remote-server</code> package</a></div>
-      <div><a href="https://github.com/paramount-engineering/roku-dev-studio/tree/main/packages/roku-dev-studio-rce" target="_blank" rel="noopener noreferrer"><code>rce</code> package</a></div>
+      <div><a href="https://github.com/jack1590/roku-dev-studio/tree/main/packages/roku-dev-studio-remote-server" target="_blank" rel="noopener noreferrer"><code>remote-server</code> package</a></div>
+      <div><a href="https://github.com/jack1590/roku-dev-studio/tree/main/packages/roku-dev-studio-rce" target="_blank" rel="noopener noreferrer"><code>rce</code> package</a></div>
     </div>
   </div>
 </footer>

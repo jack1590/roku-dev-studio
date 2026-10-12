@@ -4,9 +4,9 @@ Guidance for AI coding agents working in this repository.
 
 ## What this repo is
 
-A fork of `paramount-engineering/roku-dev-studio` (MIT) that we extend into an SDLC console: a Roku device UI plus an AI-driven code review and task pipeline.
+A public fork of `paramount-engineering/roku-dev-studio` (MIT) that we extend into an SDLC console: a Roku device UI plus an AI-driven code review and task pipeline.
 
-- `origin` = `jack1590/roku-dev-studio` (our fork). Push here.
+- `origin` = `jack1590/roku-dev-studio` (our fork). Push here. Releases and in-app updates come from this repo.
 - `upstream` = `paramount-engineering/roku-dev-studio`. Pull from here deliberately; never push to it.
 - Keep the upstream `LICENSE` and copyright notice. Do not use Paramount branding or names in our UI, binaries, or docs.
 
@@ -16,6 +16,36 @@ A fork of `paramount-engineering/roku-dev-studio` (MIT) that we extend into an S
 2. Put the review/task pipeline in its own package, not inside the Electron `main` or `renderer` code, so it can run headless later.
 3. Let each project define its own settings (devices, repos, JIRA site, models) in a repo-tracked, non-secret config file.
 
+## Review pipeline design
+
+What the pipeline does:
+
+1. **Code review**: multi-model review of a PR against its JIRA ticket, linked Figma designs, CI checks, and the repo's standards files (`AGENTS.md`, `.cursor/rules/`, `CONTRIBUTING.md`, lint/format configs).
+2. **Implement task** (planned): takes a JIRA ticket end to end (plan, implement, build and test, PR, review) using its Figma designs.
+3. **PR watch** (planned): keeps the user's own PRs current with their base branch; auto-reviews new or outdated PRs on each poll, reading only new commits.
+4. **Other people's PRs**: off by default. When on, review-only: findings post as GitHub comments; never touches their branch.
+5. **Fix / push**: applies fixes in an isolated git worktree, reports on each finding.
+
+How a review works:
+
+- Three reviewers run in parallel, each with one lens: correctness; security and data safety; maintainability, tests, and standards. A lens narrows what to hunt for, not what can be reported. Single reviewer gets all lenses.
+- An arbiter merges duplicate findings (fingerprint-based), opens files to verify before ruling, marks each `real` or `dismissed`, and gives a 0 to 1 confidence.
+- Reviewer failures are tolerated; the review names which lenses it lost.
+- Red CI checks with file/line annotations skip arbitration and count as confirmed facts.
+- Findings are tied to the diff; unresolved paths are marked "not found in the diff".
+- Large PRs: lock files, build output, vendored code, snapshots, and binaries are dropped and named on the review.
+
+Counting rules:
+
+- `severityFloor` default `minor`: lower severities are shown but not counted as work.
+- `confidenceFloor` default `0.5`: hedged findings are shown but not counted.
+- Floors are changed in Settings. Do not hard-code them.
+
+Context sources and how they are found:
+
+- JIRA: issue key from PR description, then PR title, then branch name. A key counts only if it resolves in JIRA.
+- Figma: links in PR description, ticket description, and ticket remote links.
+- Standards: read from the checkout itself, not from a global config.
 
 ## Packager
 

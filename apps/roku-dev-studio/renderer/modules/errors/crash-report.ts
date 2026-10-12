@@ -1,7 +1,7 @@
 import { S } from '@shared/strings/index.js';
 import { redactSensitive } from './redact.js';
 
-const REPO_URL = 'https://github.com/paramount-engineering/roku-dev-studio';
+const REPO_URL = 'https://github.com/jack1590/roku-dev-studio';
 /** Conservative ceiling so the encoded `issues/new` URL stays well under browsers'/GitHub's
  *  practical query-length limits. */
 const MAX_URL_LENGTH = 8000;

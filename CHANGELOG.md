@@ -2,9 +2,25 @@
 
 All notable changes to Roku Dev Studio are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); versions match the
-tags in [Releases](https://github.com/paramount-engineering/roku-dev-studio/releases).
+tags in [Releases](https://github.com/jack1590/roku-dev-studio/releases). This is a fork of
+[paramount-engineering/roku-dev-studio](https://github.com/paramount-engineering/roku-dev-studio);
+entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
+
+## [1.4.0]
+
+First release of this fork. **Moving from an upstream build is a one-time manual install**: upstream builds check upstream's releases, so download 1.4.0 from this repo's [Releases](https://github.com/jack1590/roku-dev-studio/releases/latest). From 1.4.0 on, in-app updates come from this repo. The app id is now `com.jack1590.roku-dev-studio`.
+
+### Added
+- **Projects** — Settings → Projects: one project per company or team, with its own GitHub, JIRA and Figma tokens (encrypted with the OS keychain; the renderer only learns whether a token is set). **Test** checks each token.
+- **PR Reviews** — pick repos per project and run a multi-reviewer AI review of each PR against its JIRA ticket, Figma designs, CI results and the repo's standards files. An arbiter merges and verifies findings; findings can be posted back to the PR.
+- **Device tests in reviews** — reviews can sideload the PR build to a real Roku from a shared device pool; the UI shows who holds each device.
+- **Packager** — generate signed Roku packages with the bundled `roku-pkg-cli` (no install needed): project rail, add/edit drawer with folder detection, live run log, "Rekey and try again" on a key mismatch, and run history with failure reasons. Shares the device pool with PR Reviews.
+- `packages/roku-review` — the review pipeline as its own package, outside the Electron code.
+
+### Changed
+- Update checks, release notes, "Report issue" and About links point at this repo.
 
 ## [1.3.0]
 
@@ -136,7 +152,8 @@ tags in [Releases](https://github.com/paramount-engineering/roku-dev-studio/rele
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/paramount-engineering/roku-dev-studio/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/paramount-engineering/roku-dev-studio/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/paramount-engineering/roku-dev-studio/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/paramount-engineering/roku-dev-studio/compare/1.0.0...1.1.0

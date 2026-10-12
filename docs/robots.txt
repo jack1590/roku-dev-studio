@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://paramount-engineering.github.io/roku-dev-studio/sitemap.xml
+Sitemap: https://jack1590.github.io/roku-dev-studio/sitemap.xml

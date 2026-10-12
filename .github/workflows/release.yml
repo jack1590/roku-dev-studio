@@ -219,7 +219,7 @@ jobs:
           Which file: the `.dmg` is for Apple Silicon Macs (Intel builds are not produced by default; run `npm run build:mac:intel` locally if needed). On Windows, the **Setup** `.exe` is the installer and the **Portable** `.exe` runs without installing. Linux `.deb` / `.AppImage` files come in `amd64` / `x86_64` (Intel/AMD) and `arm64` flavours. The `.zip` and `.blockmap` files are used by the in-app updater.
 
           ### What's New
-          See [CHANGELOG.md](https://github.com/paramount-engineering/roku-dev-studio/blob/main/CHANGELOG.md) for a curated summary, or "What's Changed" below for the full commit list.
+          See [CHANGELOG.md](https://github.com/jack1590/roku-dev-studio/blob/main/CHANGELOG.md) for a curated summary, or "What's Changed" below for the full commit list.
 
           ### Installation
 

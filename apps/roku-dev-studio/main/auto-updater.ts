@@ -14,7 +14,7 @@ import { classifyUpdaterError, isMissingMetadataError, type UpdaterErrorReason }
 import { mainError, mainWarn } from './log.js';
 
 const path = require('path');
-const GITHUB_OWNER = 'paramount-engineering';
+const GITHUB_OWNER = 'jack1590';
 const GITHUB_REPO = 'roku-dev-studio';
 const LATEST_RELEASE_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
 // Dev-only (see setupAutoUpdater): lets a local test server stand in for the GitHub API so the
@@ -411,7 +411,7 @@ export function setupAutoUpdater(
         info: {
           title: String(json?.name || json?.tag_name || 'Latest Release'),
           body: String(json?.body || ''),
-          htmlUrl: String(json?.html_url || 'https://github.com/paramount-engineering/roku-dev-studio/releases/latest')
+          htmlUrl: String(json?.html_url || 'https://github.com/jack1590/roku-dev-studio/releases/latest')
         }
       };
     } catch (e: any) {

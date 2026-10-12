@@ -153,7 +153,7 @@ export async function readStandards(worktree: string): Promise<StandardsFile[]> 
   return files;
 }
 
-/** Up to this much changed-file content goes into the prompt; bigger PRs keep the (list + diff on disk). */
+/** Up to this much changed-file content goes into the prompt; bigger PRs get a file list plus the diff on disk. */
 export const INLINE_FILES_BUDGET = 70_000;
 const INLINE_FILE_MAX = 25_000;
 

@@ -10,13 +10,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/paramount-engineering/roku-dev-studio.git",
+    "url": "git+https://github.com/jack1590/roku-dev-studio.git",
     "directory": "packages/roku-dev-studio-api"
   },
   "bugs": {
-    "url": "https://github.com/paramount-engineering/roku-dev-studio/issues"
+    "url": "https://github.com/jack1590/roku-dev-studio/issues"
   },
-  "homepage": "https://github.com/paramount-engineering/roku-dev-studio#readme",
+  "homepage": "https://github.com/jack1590/roku-dev-studio#readme",
   "engines": {
     "node": ">=24.17.0"
   },

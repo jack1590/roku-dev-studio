@@ -1,8 +1,8 @@
 {
   "name": "roku-dev-studio",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Roku Dev Studio - Control your Roku device over the local network",
-  "homepage": "https://github.com/paramount-engineering/roku-dev-studio",
+  "homepage": "https://github.com/jack1590/roku-dev-studio",
   "main": "main.bundled.cjs",
   "private": true,
   "scripts": {
@@ -100,7 +100,7 @@
     "wait-on": "9.1.0"
   },
   "build": {
-    "appId": "com.paramount.vtg.roku-dev-studio",
+    "appId": "com.jack1590.roku-dev-studio",
     "productName": "Roku Dev Studio",
     "artifactName": "Roku-Dev-Studio-${version}-${arch}.${ext}",
     "directories": {
@@ -108,7 +108,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "paramount-engineering",
+      "owner": "jack1590",
       "repo": "roku-dev-studio"
     },
     "afterAllArtifactBuild": "./scripts/build-hooks-entry.cjs",

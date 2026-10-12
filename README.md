@@ -4,15 +4,26 @@
 </h1>
 
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue)
-![CI](https://github.com/paramount-engineering/roku-dev-studio/actions/workflows/ci.yml/badge.svg)
-![Version](https://img.shields.io/github/package-json/v/paramount-engineering/roku-dev-studio?filename=apps%2Froku-dev-studio%2Fpackage.json&label=version&color=purple)
-![Electron](https://img.shields.io/github/package-json/dependency-version/paramount-engineering/roku-dev-studio/dev/electron?filename=apps%2Froku-dev-studio%2Fpackage.json&color=green)
+![CI](https://github.com/jack1590/roku-dev-studio/actions/workflows/ci.yml/badge.svg)
+![Version](https://img.shields.io/github/package-json/v/jack1590/roku-dev-studio?filename=apps%2Froku-dev-studio%2Fpackage.json&label=version&color=purple)
+![Electron](https://img.shields.io/github/package-json/dependency-version/jack1590/roku-dev-studio/dev/electron?filename=apps%2Froku-dev-studio%2Fpackage.json&color=green)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
-[![roku-dev-studio MCP server](https://glama.ai/mcp/servers/paramount-engineering/roku-dev-studio/badges/score.svg)](https://glama.ai/mcp/servers/paramount-engineering/roku-dev-studio)
+
+> **This is a fork** of [paramount-engineering/roku-dev-studio](https://github.com/paramount-engineering/roku-dev-studio) (MIT). It tracks upstream and adds an SDLC console on top: AI PR review, device-verified testing, and Roku app packaging. See [What this fork adds](#what-this-fork-adds). It is not affiliated with or endorsed by Paramount. In-app updates for this build come from this repo's [Releases](https://github.com/jack1590/roku-dev-studio/releases).
 
 **Roku Developer Tools** for macOS, Windows, and Linux — Remote Control, App Side-loading, ECP automation, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents (Cursor, Claude, VS Code), and a `rds` CLI. Supports both local network and internet-bridged devices.
 
 A comprehensive cross-platform desktop application for controlling and developing on Roku devices over your local network or via remote server using the External Control Protocol (ECP).
+
+## What this fork adds
+
+| Feature | What it does |
+|---------|--------------|
+| **Projects** | **Settings → Projects**: one project per company or team, each with its own GitHub, JIRA, and Figma tokens. Tokens are encrypted with the OS keychain; the UI only learns whether a token is set. **Test** checks each token. See [Projects and Tokens](#projects-and-tokens). |
+| **PR Reviews** | Pick repos per project, then run a multi-reviewer AI review of each PR against its JIRA ticket, linked Figma designs, CI results, and the repo's own standards files. Reviewers each take one lens (correctness, security, maintainability); an arbiter merges duplicates, verifies each finding, and scores confidence. Findings can be posted back to the PR. |
+| **Device tests in reviews** | A review can sideload the PR build to a real Roku from a shared device pool and check it there. The UI shows which run holds which device. |
+| **Packager** | Generate signed Roku packages from the app. It wraps the bundled [`roku-pkg-cli`](https://github.com/jack1590/roku-pkg-cli), so there is nothing to install: project rail, add/edit drawer with folder detection, live run log, "Rekey and try again" on a key mismatch, and run history with failure reasons. Package runs share the device pool with PR Reviews, and projects are shared with the `roku-pkg` terminal CLI. |
+| **`roku-review` package** | The review pipeline lives in [`packages/roku-review/`](packages/roku-review/), separate from the Electron code, so it can run headless later. |
 
 ## Why Roku Dev Studio? (vs. official Roku tools)
 
@@ -45,10 +56,11 @@ This repository is an **npm workspace** monorepo. Run **`npm install`** and **`n
 | **[`packages/roku-dev-studio-network-inspector/`](packages/roku-dev-studio-network-inspector/)** | Network Inspector engine: hotspot packet capture (DNS/SNI/HTTP) + local MITM proxy, transport-agnostic so it runs in both the desktop app and the remote server — [package README](packages/roku-dev-studio-network-inspector/README.md). |
 | **[`packages/roku-dev-studio-rce/`](packages/roku-dev-studio-rce/)** | Roku Cloud Emulator (RCE) client — Core API (accounts / devices / snapshots) and Device API (ECP proxy, ports-bridge sockets) for cloud-hosted virtual Rokus, used by the app's RCE locations — [package README](packages/roku-dev-studio-rce/README.md). |
 | **[`packages/roku-dev-studio-remote-server/`](packages/roku-dev-studio-remote-server/)** | HTTP/WebSocket relay to control Rokus over the internet — [package README](packages/roku-dev-studio-remote-server/README.md). |
+| **[`packages/roku-review/`](packages/roku-review/)** | *(fork)* AI pull request review pipeline: reviewer lenses, arbiter, JIRA / Figma / CI context, device checks. Runs in the Electron main process, never in the renderer. |
 | **[`packages/roku-dev-studio-platform/`](packages/roku-dev-studio-platform/)** | Shared host-platform helpers (OS identity, modifier keys, `path-safe`, node-only filesystem helpers) used by the app and other packages so platform logic lives in one place. Built to `dist/` on `npm install` — [package README](packages/roku-dev-studio-platform/README.md). |
 | **[`roku-components/`](roku-components/)** | BrightScript-side artifacts: `TrackerTask.xml` (drop into your channel for App Connector / RALE), the `fiddle/` SceneGraph scaffold, and `demo/` (the bundled **Roku Dev Studio Showcase** channel behind Try Demo App) — [components README](roku-components/README.md). |
 
-**Author:** Hareendra Donapati
+**Author:** Hareendra Donapati · **Fork maintainer:** [jack1590](https://github.com/jack1590)
 
 ## Glossary
 
@@ -99,6 +111,8 @@ See **[FEATURES.md](FEATURES.md)** for the full tour with screenshots. Quick ind
 
 Remote Control ([Floating Remote](FEATURES.md#remote-control)) · [Device Performance](FEATURES.md#device-performance) · [Device Discovery](FEATURES.md#device-discovery) · [App Launcher & Management](FEATURES.md#app-launcher) · [Device Queries](FEATURES.md#device-queries) · [Dev App Management](FEATURES.md#dev-app-management) · [Try Demo App](FEATURES.md#try-demo-app) · [Sideload Relay](FEATURES.md#sideload-relay) · [Console & Debugging](FEATURES.md#console-debugging) · [Ports Window](FEATURES.md#port-terminal) · [Console Monitor](FEATURES.md#console-monitor) · [BrightScript Debugger](FEATURES.md#brightscript-debugger) · [App Connector (RALE)](FEATURES.md#app-connector) · [Network Inspector](FEATURES.md#network-inspector) · [Network Session Viewer](FEATURES.md#network-session-viewer) · [Action Scripts](FEATURES.md#action-scripts) · [AI Agents (MCP Server)](FEATURES.md#ai-agents-mcp-server) · [BrightScript Fiddle](FEATURES.md#brightscript-fiddle) · [Log File Viewer](FEATURES.md#log-file-viewer) · [Static Channel Analysis](FEATURES.md#static-channel-analysis) · [`rds` CLI](FEATURES.md#rds-cli) · [Remote Server Support](FEATURES.md#remote-server-support) · [Settings](FEATURES.md#settings) · [Language Switching](FEATURES.md#language-switching) · [Crash Reporting](FEATURES.md#crash-reporting) · [Developer Features](FEATURES.md#developer-features)
 
+**Fork additions:** [Projects](#projects-and-tokens) · [PR Reviews](#what-this-fork-adds) · [Packager](#what-this-fork-adds)
+
 ## Remote Server Setup
 
 Roku Dev Studio can control devices over the internet using a remote server bridge, so you can manage devices in Remote Locations without being on the same network as the desktop app. Run the relay (`npm run remote-server` from this repo, or `npm install -g roku-dev-studio-remote-server`), then add it via **Add Remote Location** in the device selector. The modal has two tabs: **RDS Relay** (Relay Server address + port) and **RCE** (a Roku Cloud Emulator account name + Personal Access Token). RCE devices list as shutdown / pending / running and must be started first (**Start**, with optional snapshot / firmware / Max Run Time options) — ECP, sideload and console only respond while a device is running.
@@ -107,7 +121,7 @@ Full setup (running the server as a service, network/firewall configuration, the
 
 ## Projects and Tokens
 
-**Settings → Projects** adds a project for each company or team, with its own tokens., the GitHub token decides which repos are available: your own repos plus every org the token's account belongs to. Pick the repos to review in **PR Reviews** (sidebar, or the welcome screen). Tokens are encrypted with the OS keychain and never written to the repo or shown again.
+**Settings → Projects** adds a project for each company or team, with its own tokens. The GitHub token decides which repos are available: your own repos plus every org the token's account belongs to. Pick the repos to review in **PR Reviews** (sidebar, or the welcome screen). Tokens are encrypted with the OS keychain and never written to the repo or shown again.
 
 | Token | Where to create it | Scope / notes |
 |-------|--------------------|---------------|

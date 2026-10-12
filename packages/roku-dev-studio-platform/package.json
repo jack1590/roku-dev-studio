@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/paramount-engineering/roku-dev-studio.git",
+    "url": "git+https://github.com/jack1590/roku-dev-studio.git",
     "directory": "packages/roku-dev-studio-platform"
   },
   "engines": {

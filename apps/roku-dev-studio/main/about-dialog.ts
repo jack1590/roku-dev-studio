@@ -51,9 +51,9 @@ function buildAboutInfo() {
     arch: os.arch(),
     osRelease: os.release(),
     iconUrl,
-    repoUrl: 'https://github.com/paramount-engineering/roku-dev-studio',
+    repoUrl: 'https://github.com/jack1590/roku-dev-studio',
     authorUrl: packageJson.author?.url || 'https://github.com/hdonapati',
-    siteUrl: 'https://paramount-engineering.github.io/roku-dev-studio/',
+    siteUrl: 'https://jack1590.github.io/roku-dev-studio/',
   };
 }
 

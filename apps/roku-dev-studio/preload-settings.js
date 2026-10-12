@@ -708,6 +708,14 @@ var init_channels = __esm({
       ReviewsPost: "reviews:post",
       /** PR Reviews: edits, posted marks and any running posting queue of a review. */
       ReviewsPostingState: "reviews:posting-state",
+      /** PR Reviews: dismiss a finding on a review and remember it for the repo (two-tier suppression). */
+      ReviewsDismiss: "reviews:dismiss",
+      /** PR Reviews: undo a user dismissal on a review and forget that objection for the repo. */
+      ReviewsRestoreFinding: "reviews:restore-finding",
+      /** Settings → AI review: remembered dismissals per repo. */
+      ReviewsDismissals: "reviews:dismissals",
+      /** Settings → AI review: forget one remembered dismissal. */
+      ReviewsForgetDismissal: "reviews:forget-dismissal",
       /** Main → windows: progress of a posting run. */
       ReviewsPostUpdate: "reviews:post-update",
       /** Settings → Projects: detect how a repo builds, from its base-branch files on GitHub. */
@@ -842,6 +850,8 @@ contextBridge.exposeInMainWorld("settingsApi", {
   projectsWikiPreview: (input) => ipcRenderer.invoke(IPC2.ProjectsWikiPreview, input),
   projectsWikiTags: (wikiDir) => ipcRenderer.invoke(IPC2.ProjectsWikiTags, { wikiDir }),
   projectsBuildDetect: (id, repo, root) => ipcRenderer.invoke(IPC2.ProjectsBuildDetect, { id, repo, root }),
+  reviewsDismissals: (repos) => ipcRenderer.invoke(IPC2.ReviewsDismissals, { repos }),
+  reviewsForgetDismissal: (repo, id) => ipcRenderer.invoke(IPC2.ReviewsForgetDismissal, { repo, id }),
   projectsBuildSave: (input) => ipcRenderer.invoke(IPC2.ProjectsBuildSave, input),
   projectsBuildEnvSave: (id, repo, text) => ipcRenderer.invoke(IPC2.ProjectsBuildEnvSave, { id, repo, text }),
   projectsBuildEnvClear: (id, repo) => ipcRenderer.invoke(IPC2.ProjectsBuildEnvClear, { id, repo })

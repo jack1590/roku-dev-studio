@@ -136,7 +136,7 @@ export interface RepoScan {
   truncated: boolean;
 }
 
-/** discovery: the account's own repos plus every org it belongs to. */
+/** Discovery: the account's own repos plus every org it belongs to. */
 async function scanAccessibleRepos(token: string): Promise<RepoScan> {
   const userRes = await githubGet(token, '/user');
   if (!userRes.ok) throw new GitHubStatusError(userRes.status, false);

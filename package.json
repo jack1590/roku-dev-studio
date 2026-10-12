@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Roku Dev Studio — cross-platform desktop app and CLI for Roku development: ECP remote control, BrightScript sideload, RALE/App Connector, Network Inspector, Action Scripts, MCP server for AI agents",
-  "homepage": "https://github.com/paramount-engineering/roku-dev-studio#readme",
+  "homepage": "https://github.com/jack1590/roku-dev-studio#readme",
   "workspaces": [
     "packages/*",
     "apps/*"

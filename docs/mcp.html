@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MCP Server — Roku Dev Studio</title>
 <meta name="description" content="The Roku Dev Studio MCP server: let Cursor, Claude Desktop, or VS Code drive a real Roku device — full tool catalog, setup, and security notes.">
-<link rel="canonical" href="https://paramount-engineering.github.io/roku-dev-studio/mcp.html">
+<link rel="canonical" href="https://jack1590.github.io/roku-dev-studio/mcp.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Roku Dev Studio">
 <meta property="og:title" content="MCP Server — Roku Dev Studio">
 <meta property="og:description" content="The Roku Dev Studio MCP server: let Cursor, Claude Desktop, or VS Code drive a real Roku device — full tool catalog, setup, and security notes.">
-<meta property="og:url" content="https://paramount-engineering.github.io/roku-dev-studio/mcp.html">
-<meta property="og:image" content="https://paramount-engineering.github.io/roku-dev-studio/images/og-image.png">
+<meta property="og:url" content="https://jack1590.github.io/roku-dev-studio/mcp.html">
+<meta property="og:image" content="https://jack1590.github.io/roku-dev-studio/images/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MCP Server — Roku Dev Studio">
 <meta name="twitter:description" content="The Roku Dev Studio MCP server: let Cursor, Claude Desktop, or VS Code drive a real Roku device — full tool catalog, setup, and security notes.">
-<meta name="twitter:image" content="https://paramount-engineering.github.io/roku-dev-studio/images/og-image.png">
+<meta name="twitter:image" content="https://jack1590.github.io/roku-dev-studio/images/og-image.png">
 <link rel="icon" href="images/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -31,15 +31,15 @@
   "operatingSystem": "macOS, Windows, Linux",
   "applicationCategory": "DeveloperApplication",
   "description": "Model Context Protocol server bundled with Roku Dev Studio — lets Cursor, Claude Desktop, VS Code, and other MCP clients drive a real Roku device: remote control, sideload, App Connector, Network Inspector, and BrightScript debugging.",
-  "url": "https://paramount-engineering.github.io/roku-dev-studio/mcp.html",
-  "image": "https://paramount-engineering.github.io/roku-dev-studio/images/og-image.png",
-  "softwareVersion": "1.3.0",
-  "license": "https://github.com/paramount-engineering/roku-dev-studio/blob/main/LICENSE",
-  "downloadUrl": "https://github.com/paramount-engineering/roku-dev-studio/releases",
+  "url": "https://jack1590.github.io/roku-dev-studio/mcp.html",
+  "image": "https://jack1590.github.io/roku-dev-studio/images/og-image.png",
+  "softwareVersion": "1.4.0",
+  "license": "https://github.com/jack1590/roku-dev-studio/blob/main/LICENSE",
+  "downloadUrl": "https://github.com/jack1590/roku-dev-studio/releases",
   "author": {
-    "@type": "Organization",
-    "name": "Paramount Engineering",
-    "url": "https://github.com/paramount-engineering"
+    "@type": "Person",
+    "name": "jack1590",
+    "url": "https://github.com/jack1590"
   },
   "offers": {
     "@type": "Offer",
@@ -63,7 +63,7 @@
         <a href="install.html">Install</a>
         <a href="mcp.html" class="active">MCP</a>
         <a href="remote-server.html">Remote Server</a>
-        <a href="https://github.com/paramount-engineering/roku-dev-studio" class="nav-cta" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/jack1590/roku-dev-studio" class="nav-cta" target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
       <button class="theme-toggle" aria-label="Toggle theme" title="Theme: System (click to change)"><svg class="icon" width="16" height="16"><use href="assets/icons.svg#icon-devices"></use></svg></button>
       <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><svg class="icon" width="16" height="16"><use href="assets/icons.svg#icon-menu"></use></svg></button>
@@ -144,8 +144,8 @@
   <h2>Tool catalog</h2>
   <p>Every op accepts an optional <code>device</code> (IP or serial) — omit it and the tool targets whichever device tab is focused in the app. For the full list with input/response schemas, see the <a href="mcp-tools.html"><strong>MCP Tool reference</strong></a> generated from its package.</p>
 
-  <p>Resources: <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/quick-start.md" target="_blank" rel="noopener noreferrer"><code>quick-start.md</code></a>, <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/action-script-contract.md" target="_blank" rel="noopener noreferrer"><code>action-script-contract.md</code></a>, <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/resources.ts#L88" target="_blank" rel="noopener noreferrer"><code>capability-bundle.json</code></a>, <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-api/lib/catalogs.ts#L364" target="_blank" rel="noopener noreferrer"><code>authoring-rules.json</code></a>.<br>
-  Prompts: <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/prompts/one-shot-action.md" target="_blank" rel="noopener noreferrer"><code>roku-one-shot-action</code></a>, <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/prompts/action-script-quickstart.md" target="_blank" rel="noopener noreferrer"><code>roku-action-script-quickstart</code></a>, <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/prompts/debug-device.md" target="_blank" rel="noopener noreferrer"><code>roku-debug-device</code></a>.</p>
+  <p>Resources: <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/quick-start.md" target="_blank" rel="noopener noreferrer"><code>quick-start.md</code></a>, <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/action-script-contract.md" target="_blank" rel="noopener noreferrer"><code>action-script-contract.md</code></a>, <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/resources.ts#L88" target="_blank" rel="noopener noreferrer"><code>capability-bundle.json</code></a>, <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-api/lib/catalogs.ts#L364" target="_blank" rel="noopener noreferrer"><code>authoring-rules.json</code></a>.<br>
+  Prompts: <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/prompts/one-shot-action.md" target="_blank" rel="noopener noreferrer"><code>roku-one-shot-action</code></a>, <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/prompts/action-script-quickstart.md" target="_blank" rel="noopener noreferrer"><code>roku-action-script-quickstart</code></a>, <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/src/prose/prompts/debug-device.md" target="_blank" rel="noopener noreferrer"><code>roku-debug-device</code></a>.</p>
 </section>
 
 <section class="doc-section" id="security">
@@ -157,7 +157,7 @@
     <li><strong>Cloud-sandboxed agents are guarded.</strong> If <code>sideload</code>'s file path looks like a cloud agent sandbox path, it's rejected with an actionable error — use <code>contentBase64</code> + <code>filename</code> instead.</li>
     <li>Device selection isn't always automatic — most tools accept an optional <code>device</code>; omit it and they use the focused tab, or resolve one first with <code>list_devices</code> / <code>connect_device</code>.</li>
   </ul>
-  <p>Full source, exact parameter schemas, and design notes live in the <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/README.md" target="_blank" rel="noopener noreferrer">MCP package README</a>. Also listed on <a href="https://glama.ai/mcp/servers/paramount-engineering/roku-dev-studio" target="_blank" rel="noopener noreferrer">Glama</a> and <a href="https://mcpmarket.com/server/roku-dev-studio" target="_blank" rel="noopener noreferrer">MCP Market</a>.</p>
+  <p>Full source, exact parameter schemas, and design notes live in the <a href="https://github.com/jack1590/roku-dev-studio/blob/main/packages/roku-dev-studio-mcp/README.md" target="_blank" rel="noopener noreferrer">MCP package README</a>. Also listed on <a href="https://glama.ai/mcp/servers/jack1590/roku-dev-studio" target="_blank" rel="noopener noreferrer">Glama</a> and <a href="https://mcpmarket.com/server/roku-dev-studio" target="_blank" rel="noopener noreferrer">MCP Market</a>.</p>
 </section>
 
 </div>
@@ -166,16 +166,16 @@
   <div class="container">
     <div class="footer-brand">
       <div>
-        <a class="footer-org" href="https://github.com/paramount-engineering" target="_blank" rel="noopener noreferrer">Paramount Engineering</a> ·
-        <a class="footer-org" href="https://github.com/paramount-engineering/roku-dev-studio" target="_blank" rel="noopener noreferrer">Roku Dev Studio</a>
+        <a class="footer-org" href="https://github.com/jack1590" target="_blank" rel="noopener noreferrer">jack1590</a> ·
+        <a class="footer-org" href="https://github.com/jack1590/roku-dev-studio" target="_blank" rel="noopener noreferrer">Roku Dev Studio</a> (fork of <a href="https://github.com/paramount-engineering/roku-dev-studio" target="_blank" rel="noopener noreferrer">paramount-engineering/roku-dev-studio</a>)
       </div>
       <div class="footer-sub">
-        <a href="https://github.com/paramount-engineering/roku-dev-studio/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a> ·
+        <a href="https://github.com/jack1590/roku-dev-studio/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a> ·
         <a href="https://github.com/hdonapati" target="_blank" rel="noopener noreferrer">created by Hareendra Donapati</a>
       </div>
     </div>
     <span>
-      <a href="https://github.com/paramount-engineering/roku-dev-studio/tree/main/packages/roku-dev-studio-mcp" target="_blank" rel="noopener noreferrer"><code>mcp</code> package</a>
+      <a href="https://github.com/jack1590/roku-dev-studio/tree/main/packages/roku-dev-studio-mcp" target="_blank" rel="noopener noreferrer"><code>mcp</code> package</a>
     </span>
   </div>
 </footer>

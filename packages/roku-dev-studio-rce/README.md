@@ -7,7 +7,7 @@ sideload/screenshot, Janus video signaling). The payoff is `RceSocket`: a `net.S
 `Duplex` over the ports bridge, so the desktop app's telnet, BrightScript debugger, and RALE code
 run against a cloud device by swapping only the socket construction — none of their own logic changes.
 
-> Part of [Roku Dev Studio](https://paramount-engineering.github.io/roku-dev-studio/) — see the [main repo](https://github.com/paramount-engineering/roku-dev-studio) for the desktop app, MCP server, and other packages.
+> Part of [Roku Dev Studio](https://jack1590.github.io/roku-dev-studio/) — see the [main repo](https://github.com/jack1590/roku-dev-studio) for the desktop app, MCP server, and other packages.
 
 ## Requirements
 
