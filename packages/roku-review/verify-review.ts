@@ -211,6 +211,8 @@ async function deviceChecks(): Promise<void> {
   assert.equal(t2.comments[0].body, 'Fix this', 'our hidden marker is stripped');
   assert.equal(t2.comments[1].author, 'author');
   assert.ok(discussionPromptBlock({ threads }).includes('"id": "t2"'));
+  assert.equal(t2.markerId, 'abc', 'our finding id is read from the marker');
+  assert.ok(discussionPromptBlock({ threads }).includes('"ourFinding": "abc"'));
   assert.ok(discussionPromptBlock({ threads: [], error: 'HTTP 403' }).includes('could not be read'));
 }
 

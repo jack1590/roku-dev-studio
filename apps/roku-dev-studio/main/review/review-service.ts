@@ -392,6 +392,8 @@ async function execute(job: Job): Promise<void> {
     prTests,
   });
   const touched = new Set(changedFiles);
+  // Our posted comments that got a reply: the judge must see the answer, so they are never carried blind.
+  const answered = new Set(discussion.threads.filter((t) => t.markerId && t.comments.length > 1).map((t) => t.markerId!));
 
   const result = await runReview({
     apiKey: cursorKey,
@@ -411,8 +413,9 @@ async function execute(job: Job): Promise<void> {
       ? {
           previous: {
             sinceSha: incremental.sinceSha,
-            recheck: openBefore.filter((f) => f.file && touched.has(f.file)),
-            carry: openBefore.filter((f) => !f.file || !touched.has(f.file)),
+            // Re-check what the new commits touched, and anything someone answered on GitHub since.
+            recheck: openBefore.filter((f) => (f.file && touched.has(f.file)) || answered.has(f.id)),
+            carry: openBefore.filter((f) => !(f.file && touched.has(f.file)) && !answered.has(f.id)),
             prFiles,
           },
         }
