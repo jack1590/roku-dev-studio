@@ -78,6 +78,7 @@ interface ReviewFinding {
   ci?: { check: string; url?: string };
   userDismissed?: { at: number; reason?: string; previousStatus: FindingStatus; remembered: boolean; prNumber?: number };
   discussion?: { thread: string; url?: string; replyTo?: number; lastAuthor: string; last: string; resolved: boolean; reply?: string };
+  postId?: string;
 }
 
 interface DeviceRound {
@@ -734,10 +735,10 @@ function renderFinding(repo: string, sha: string, f: ReviewFinding): HTMLElement
     ...(f.comment && f.status !== 'dismissed'
       ? [
           posting && (f.status === 'issue' || f.status === 'needs-device')
-            ? renderPostableComment(f.id, f.discussion?.reply ? `Reply to @${f.discussion.lastAuthor} in the thread` : f.file ? `Comment on ${f.file}${f.line ? `:${f.line}` : ''}` : 'Comment (posted as a plain PR comment)', commentText(f), {
+            ? renderPostableComment(pid(f), f.discussion?.reply ? `Reply to @${f.discussion.lastAuthor} in the thread` : f.file ? `Comment on ${f.file}${f.line ? `:${f.line}` : ''}` : 'Comment (posted as a plain PR comment)', commentText(f), {
                 original: f.comment,
                 tickable: true,
-                ticked: !posting.unchecked.has(f.id),
+                ticked: !posting.unchecked.has(pid(f)),
                 note: f.status === 'needs-device' ? 'Not verified on a device yet: worded as something to check.' : '',
               })
             : renderCommentPreview(f.file ? `Comment on ${f.file}${f.line ? `:${f.line}` : ''}` : 'Comment', f.comment),
@@ -963,6 +964,9 @@ function recommendation(result: StoredReview['result']): { label: string; tone: 
   return { label: 'Approve', tone: 'success' };
 }
 
+/** Posting key: a reply in a thread is its own post, separate from the finding's first comment. */
+const pid = (f: ReviewFinding) => f.postId ?? f.id;
+
 /** Comments that can be posted: verified issues and needs-device findings that have comment text. */
 function postableFindings(result: StoredReview['result']): ReviewFinding[] {
   return result.findings.filter((f) => (f.status === 'issue' || f.status === 'needs-device') && !!f.comment);
@@ -974,7 +978,7 @@ function generalText(result: StoredReview['result']): string {
 }
 
 function commentText(f: ReviewFinding): string {
-  return posting?.state.edits[f.id] ?? f.comment ?? '';
+  return posting?.state.edits[pid(f)] ?? f.comment ?? '';
 }
 
 /** One comment: tick to post, edit before posting, locked once posted. */
@@ -1025,7 +1029,7 @@ function renderPostableComment(id: string, title: string, text: string, opts: { 
 }
 
 function selectedPostIds(result: StoredReview['result']): string[] {
-  return postableFindings(result).filter((f) => !posting?.unchecked.has(f.id) && !posting?.state.posted[f.id]).map((f) => f.id);
+  return postableFindings(result).filter((f) => !posting?.unchecked.has(pid(f)) && !posting?.state.posted[pid(f)]).map(pid);
 }
 
 /** Bottom bar of the review drawer: what will be posted, how, and progress. */
@@ -1072,7 +1076,7 @@ function renderPostBar(result: StoredReview['result']): HTMLElement {
   max.disabled = !ps.spaced;
   const post = h('button', { type: 'button', class: 'prr-btn prr-btn-primary', 'data-action': 'post-comments' }, [count ? `Post ${count} comment${count === 1 ? '' : 's'}` : 'Post comments']);
   post.toggleAttribute('disabled', !count);
-  const left = all.filter((f) => !ps.state.posted[f.id]);
+  const left = all.filter((f) => !ps.state.posted[pid(f)]);
   return h('div', { class: 'prr-postbar' }, [
     h('div', { class: 'prr-postbar-text' }, [
       h('strong', {}, [`${ids.length} of ${left.length} comment${left.length === 1 ? '' : 's'} selected`]),
@@ -1895,11 +1899,11 @@ function handlePostingAction(action: string | null, target: HTMLElement, data: S
       refreshPostSelection(data);
       return true;
     case 'select-no-posts':
-      for (const f of postableFindings(data.result)) ps.unchecked.add(f.id);
+      for (const f of postableFindings(data.result)) ps.unchecked.add(pid(f));
       refreshPostSelection(data);
       return true;
     case 'edit-comment': {
-      const f = data.result.findings.find((x) => x.id === id);
+      const f = data.result.findings.find((x) => pid(x) === id);
       ps.editing = id;
       ps.draft = id === GENERAL_ID ? generalText(data.result) : f ? commentText(f) : '';
       rerender();

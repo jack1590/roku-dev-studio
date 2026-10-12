@@ -36,6 +36,7 @@ interface StoredFinding {
   comment?: string;
   /** Set when a PR thread already raises it: the comment is a reply posted in that thread. */
   discussion?: { replyTo?: number; url?: string };
+  postId?: string;
 }
 
 interface StoredReviewLike {
@@ -179,7 +180,7 @@ export function setupPostingHandlers(deps: {
             if (!res.ok) throw new Error(`GitHub returned HTTP ${res.status}.`);
             url = (res.json as { html_url?: string })?.html_url;
           } else {
-            const f = stored.result.findings.find((x) => x.id === id)!;
+            const f = stored.result.findings.find((x) => (x.postId ?? x.id) === id)!;
             const text = (fresh.edits[id] ?? f.comment ?? '').trim();
             if (!text) throw new Error('This finding has no comment text.');
             const body = `${text}\n\n${marker(id)}`;

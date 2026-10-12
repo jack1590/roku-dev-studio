@@ -29,6 +29,8 @@ export interface DiscussionThread {
   url?: string;
   resolved: boolean;
   outdated: boolean;
+  /** Our finding id when the thread started with one of our posted comments (from its hidden marker). */
+  markerId?: string;
   /** The first comment, then the replies in order. */
   comments: DiscussionComment[];
 }
@@ -41,6 +43,7 @@ export interface Discussion {
 const MAX_THREADS = 60;
 const MAX_BODY = 1500;
 const MARKER = /<!--\s*rds-review:[^>]*-->/g;
+const MARKER_ID = /<!--\s*rds-review:([^\s>]+)\s*-->/;
 
 interface GqlComment {
   databaseId: number;
@@ -76,12 +79,13 @@ export function toThreads(pr: {
       url: root.url,
       resolved: t.isResolved,
       outdated: t.isOutdated,
+      ...(MARKER_ID.exec(root.body) ? { markerId: MARKER_ID.exec(root.body)![1] } : {}),
       comments: comments.map(toComment),
     });
   }
   for (const c of pr.comments?.nodes ?? []) {
     if (isBot(c) || !clean(c.body)) continue;
-    threads.push({ id: `c${c.databaseId}`, kind: 'general', url: c.url, resolved: false, outdated: false, comments: [toComment(c)] });
+    threads.push({ id: `c${c.databaseId}`, kind: 'general', url: c.url, resolved: false, outdated: false, ...(MARKER_ID.exec(c.body) ? { markerId: MARKER_ID.exec(c.body)![1] } : {}), comments: [toComment(c)] });
   }
   // Open threads first, then the newest: what the judge most needs fits the cap.
   return threads.sort((a, b) => Number(a.resolved) - Number(b.resolved) || (b.comments.at(-1)?.at ?? '').localeCompare(a.comments.at(-1)?.at ?? '')).slice(0, MAX_THREADS);
@@ -113,6 +117,6 @@ export function discussionPromptBlock(d: Discussion | undefined): string {
   if (!d) return '';
   if (d.error) return `PR discussion: could not be read (${d.error}). Judge the findings on the code alone.`;
   if (!d.threads.length) return 'PR discussion: no comments yet.';
-  const slim = d.threads.map((t) => ({ id: t.id, kind: t.kind, file: t.file, line: t.line, resolved: t.resolved, outdated: t.outdated, comments: t.comments.map((c) => ({ author: c.author, body: c.body })) }));
-  return `PR discussion so far (JSON, open threads first; "comments" are in order, the first one started the thread):\n${JSON.stringify(slim, null, 2)}`;
+  const slim = d.threads.map((t) => ({ id: t.id, ...(t.markerId ? { ourFinding: t.markerId } : {}), kind: t.kind, file: t.file, line: t.line, resolved: t.resolved, outdated: t.outdated, comments: t.comments.map((c) => ({ author: c.author, body: c.body })) }));
+  return `PR discussion so far (JSON, open threads first; "comments" are in order, the first one started the thread; "ourFinding" is the id of the finding our comment came from, so a previous finding with that id belongs to that thread):\n${JSON.stringify(slim, null, 2)}`;
 }

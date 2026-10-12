@@ -8,6 +8,16 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.1]
+
+### Added
+- **PR discussion in reviews** — the judge reads the PR's existing threads (with every reply and resolved state) and general comments. A finding the discussion already settles is dismissed; one already raised is not posted again; when the author's answer is wrong or incomplete, the review drafts a reply in that thread ("Reply to @author in the thread"). Replies post inside the thread. The review card shows the thread's last message, and "checked against" counts the threads.
+
+### Fixed
+- A re-review after new commits no longer carries old findings past the judge when someone replied to them on GitHub; they are re-checked against the reply.
+- Findings are tied to the thread of the comment posted for them, so the judge does not have to guess.
+- A reply draft for a finding whose first comment was already posted can be posted (it has its own post id).
+
 ## [1.4.0]
 
 First release of this fork. **Moving from an upstream build is a one-time manual install**: upstream builds check upstream's releases, so download 1.4.0 from this repo's [Releases](https://github.com/jack1590/roku-dev-studio/releases/latest). From 1.4.0 on, in-app updates come from this repo. The app id is now `com.jack1590.roku-dev-studio`.
@@ -153,7 +163,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/paramount-engineering/roku-dev-studio/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/paramount-engineering/roku-dev-studio/compare/v1.1.0...v1.2.0

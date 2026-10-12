@@ -52,6 +52,8 @@ export interface ReviewFinding {
   /** Dismissed by the user: on this review, or `remembered` from an earlier dismissal in the repo. */
   /** A PR thread that already raises it; `reply` is the draft reply for that thread (posted instead of a new comment). */
   discussion?: { thread: string; url?: string; replyTo?: number; lastAuthor: string; last: string; resolved: boolean; reply?: string };
+  /** Posting key when it differs from `id`: a reply in a thread is a new post even though the finding was posted before. */
+  postId?: string;
   userDismissed?: { at: number; reason?: string; previousStatus: FindingStatus; remembered: boolean; prNumber?: number };
 }
 
@@ -296,14 +298,17 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
   let deviceReason: string | undefined;
 
   /** The comment to post: a new one, or a reply in the thread that already raises it, or none (already raised). */
-  const discussionOf = (raw: RawFinding, verdict: 'real' | 'dismissed'): Pick<ReviewFinding, 'comment' | 'discussion'> => {
+  const discussionOf = (raw: RawFinding, verdict: 'real' | 'dismissed', id: string): Pick<ReviewFinding, 'comment' | 'discussion' | 'postId'> => {
     const d = typeof raw.discussion === 'object' && raw.discussion ? (raw.discussion as { thread?: unknown; reply?: unknown }) : {};
-    const thread = input.discussion?.threads.find((t) => t.id === str(d.thread));
+    // The judge's pick, else the thread our own comment for this finding started.
+    const threads = input.discussion?.threads ?? [];
+    const thread = threads.find((t) => t.id === str(d.thread)) ?? threads.find((t) => t.markerId === id);
     if (!thread) return { comment: verdict === 'real' ? str(raw.comment) || undefined : undefined };
     const last = thread.comments[thread.comments.length - 1];
     const reply = verdict === 'real' && thread.rootId ? str(d.reply) || undefined : undefined;
     return {
       comment: reply,
+      ...(reply ? { postId: `${id}-reply-${thread.comments.length}` } : {}),
       discussion: { thread: thread.id, url: thread.url, ...(thread.rootId ? { replyTo: thread.rootId } : {}), lastAuthor: last.author, last: last.body.slice(0, 300), resolved: thread.resolved, ...(reply ? { reply } : {}) },
     };
   };
@@ -321,9 +326,10 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
       const confidence = typeof raw.confidence === 'number' ? Math.max(0, Math.min(1, raw.confidence > 1 ? raw.confidence / 100 : raw.confidence)) : undefined;
       const verdict = raw.verdict === 'dismissed' ? 'dismissed' : 'real';
       const needsDevice = raw.needsDevice === true;
+      // A re-checked previous finding keeps its id, so comments and history line up across reviews.
+      const id = (input.previous?.recheck.some((f) => f.id === str(raw.previousId)) ? str(raw.previousId) : '') || fingerprint(file, title);
       findings.push({
-        // A re-checked previous finding keeps its id, so comments and history line up across reviews.
-        id: (input.previous?.recheck.some((f) => f.id === str(raw.previousId)) ? str(raw.previousId) : '') || fingerprint(file, title),
+        id,
         title,
         detail: str(raw.detail),
         severity,
@@ -336,7 +342,7 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
         reasoning: str(raw.reasoning),
         sources: Array.isArray(raw.sources) ? raw.sources.filter((s): s is string => typeof s === 'string') : [],
         inDiff: file ? changed.has(file) : false,
-        ...discussionOf(raw, verdict),
+        ...discussionOf(raw, verdict, id),
         ...(needsDevice && Array.isArray(raw.tests) ? { tests: raw.tests.filter((t): t is string => typeof t === 'string' && (input.ctx.prTests ?? []).includes(t)) } : {}),
       });
     }
