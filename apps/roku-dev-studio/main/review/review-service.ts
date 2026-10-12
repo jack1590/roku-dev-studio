@@ -11,7 +11,7 @@
 import type { App, IpcMainInvokeEvent } from 'electron';
 import { IPC } from '../../shared/ipc/channels';
 import { containsSecret, defaultCompanyTag } from '../../shared/project-config';
-import { addCost, EMPTY_COST, ciPromptBlock, fetchCi, readChangedFiles, TEST_FILE, budgetDiff, fileInventory, prepareCheckout, readStandards, readWiki, renderWikiPromptBlock, runDeviceVerification, runReview, selectWikiContext, type DeviceReport, type ReviewResult } from 'roku-dev-studio-review';
+import { addCost, EMPTY_COST, ciPromptBlock, fetchCi, lookupTicket, ticketPromptBlock, readChangedFiles, TEST_FILE, budgetDiff, fileInventory, prepareCheckout, readStandards, readWiki, renderWikiPromptBlock, runDeviceVerification, runReview, selectWikiContext, type DeviceReport, type ReviewResult } from 'roku-dev-studio-review';
 import { REVIEW_LIMITS } from '../../shared/project-config';
 import { getProjectRecord, resolveHomePath } from '../ipc/project-handlers';
 import * as tokenStore from '../project-token-store';
@@ -341,8 +341,11 @@ async function execute(job: Job): Promise<void> {
 
   const standards = await readStandards(checkout.worktree);
   const files = await readChangedFiles(checkout.worktree, changedFiles);
-  update(job, { phase: 'preparing', detail: 'reading CI checks' });
-  const ci = await fetchCi({ token: githubToken, repo: job.repo, headSha: checkout.headSha, signal });
+  update(job, { phase: 'preparing', detail: 'reading CI checks and the JIRA ticket' });
+  const [ci, ticket] = await Promise.all([
+    fetchCi({ token: githubToken, repo: job.repo, headSha: checkout.headSha, signal }),
+    lookupTicket({ site: project.jiraSite, email: project.jiraEmail, token: tokenStore.getToken(project.id, 'jira'), pr: { title: pr.title, body: pr.body ?? '', branch: pr.head.ref }, signal }).catch((err: unknown) => ({ ticket: null, note: `Could not read JIRA (${err instanceof Error ? err.message : String(err)}).` })),
+  ]);
   // The only tests a device check may run: test files this PR adds or changes (never new ones).
   const prTests = prFiles.filter((f) => TEST_FILE.test(f));
 
@@ -380,6 +383,7 @@ async function execute(job: Job): Promise<void> {
     ...(since ? { sinceSha: since } : {}),
     ...(files.length ? { files } : {}),
     ciBlock: ciPromptBlock(ci),
+    ticketBlock: ticketPromptBlock(ticket),
     prTests,
   });
   const touched = new Set(changedFiles);
@@ -395,6 +399,7 @@ async function execute(job: Job): Promise<void> {
     signal,
     onPhase: (phase, detail) => update(job, { phase, detail }),
     ci,
+    ticket,
     ...(incremental
       ? {
           previous: {

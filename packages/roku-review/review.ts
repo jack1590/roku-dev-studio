@@ -11,6 +11,7 @@
 import { createHash } from 'crypto';
 import { addCost, EMPTY_COST, extractJson, runReadOnlyAgent, type RunCost } from './agent';
 import { ciFindings, ciInfraFailures, type CiReport } from './ci';
+import type { TicketLookup } from './jira';
 import { judgePrompt, LENSES, reviewerPrompt, type LensId, type PromptContext } from './prompts';
 import type { DeviceReport } from './device';
 
@@ -88,7 +89,16 @@ export interface ReviewResult {
   /** Tokens and approximate price of every agent run in this review, device run included. */
   usage?: RunCost;
   /** What the review was checked against, for the "checked against" card. */
-  context: { standards: string[]; wikiPages: string[]; instructions: boolean; diffNotes: string[]; files: number };
+  context: {
+    standards: string[];
+    wikiPages: string[];
+    instructions: boolean;
+    diffNotes: string[];
+    files: number;
+    /** The ticket the review was checked against, or why there was none. */
+    ticket?: { key: string; url: string; summary: string; type?: string; status?: string; foundIn: string; figmaLinks: string[] };
+    ticketNote?: string;
+  };
 }
 
 export interface ReviewInput {
@@ -103,6 +113,8 @@ export interface ReviewInput {
   onPhase?: (phase: 'reviewing' | 'judging', detail: string) => void;
   /** CI evidence for the head commit; annotated failures become confirmed findings. */
   ci?: CiReport;
+  /** The JIRA ticket lookup (already in the prompt via ctx.ticketBlock); recorded on the result. */
+  ticket?: TicketLookup;
   /** Re-review after new commits: previous findings to re-check (files the commits touched) and to carry over as they are. */
   previous?: { sinceSha: string; recheck: ReviewFinding[]; carry: ReviewFinding[]; prFiles: string[] };
 }
@@ -405,6 +417,11 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
       instructions: !!input.ctx.instructions.trim(),
       diffNotes: input.ctx.diffNotes,
       files: input.changedFiles.length,
+      ...(input.ticket?.ticket
+        ? { ticket: { key: input.ticket.ticket.key, url: input.ticket.ticket.url, summary: input.ticket.ticket.summary, type: input.ticket.ticket.type, status: input.ticket.ticket.status, foundIn: input.ticket.ticket.foundIn, figmaLinks: input.ticket.ticket.figmaLinks } }
+        : input.ticket?.note
+          ? { ticketNote: input.ticket.note }
+          : {}),
     },
   };
 }

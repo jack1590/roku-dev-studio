@@ -7,6 +7,7 @@ import { budgetDiff, fileInventory, splitDiff } from './diff';
 import { extractJson } from './agent';
 import { classify, isPermanentFailure, mergeFindings } from './review';
 import { estimateCents } from './pricing';
+import { adfToText, ticketKeyCandidates } from './jira';
 import { detectBuild, parseJsonc, projectFolders } from './build-detect';
 import { excerptConsole, makeRedactor, testResult, TEST_FILE } from './device';
 import { ciFindings, ciInfraFailures, ciPromptBlock, isCodeAnnotation } from './ci';
@@ -70,6 +71,18 @@ const merged = mergeFindings({
 assert.equal(merged.length, 2);
 assert.deepEqual(merged[0].raisedBy, ['correctness', 'roku']);
 assert.equal(merged[0].severity, 'major');
+
+// Ticket keys: description, then title, then branch (case-insensitive there); no duplicates.
+assert.deepEqual(ticketKeyCandidates([
+  { from: 'PR description', text: 'Implements ROK-8326. See also ROK-8326 and UTF-8 notes.' },
+  { from: 'PR title', text: 'ROK-9028: carousel' },
+  { from: 'branch name', text: 'agutierrezf/fix/rok-8326-qa-deeplink' },
+]).map((c) => `${c.key}@${c.from}`), ['ROK-8326@PR description', 'UTF-8@PR description', 'ROK-9028@PR title']);
+// ADF (JIRA rich text) to plain text: paragraphs, list items, links.
+assert.equal(adfToText({ type: 'doc', content: [
+  { type: 'paragraph', content: [{ type: 'text', text: 'Given a QA deep link' }] },
+  { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'set the proxy', marks: [{ type: 'link', attrs: { href: 'https://figma.com/x' } }] }] }] }] },
+] }).trim(), 'Given a QA deep link\n\n- set the proxy (https://figma.com/x)');
 
 // Price estimate: claude-sonnet at $3 in / $15 out per 1M; unknown models give null.
 assert.equal(Math.round(estimateCents('claude-sonnet-5-5', { input: 1_000_000, output: 100_000, cacheRead: 0, cacheWrite: 0 })!), 450);

@@ -17,6 +17,7 @@ export * from './diff';
 export * from './git';
 export * from './agent';
 export * from './ci';
+export * from './jira';
 export * from './prompts';
 export * from './review';
 export * from './build-detect';

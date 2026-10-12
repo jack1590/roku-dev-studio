@@ -397,3 +397,4 @@ details.prr-section > summary { cursor: pointer; }
 .prr-post-max { width: 64px; }
 .prr-postbar-hint { font-size: 12px; }
 .prr-postbar-own { border-color: var(--border-hover); }
+.prr-ticket-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }

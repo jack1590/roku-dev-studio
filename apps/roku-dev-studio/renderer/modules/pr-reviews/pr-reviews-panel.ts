@@ -152,7 +152,7 @@ interface StoredReview {
     lostLenses?: string[];
     ci?: { checks: { name: string; state: string; url?: string; annotations: number }[]; infra: string[]; error?: string };
     incremental?: { sinceSha: string; carried: number; rechecked: number };
-    context: { standards: string[]; wikiPages: string[]; instructions: boolean; diffNotes: string[]; files: number };
+    context: { standards: string[]; wikiPages: string[]; instructions: boolean; diffNotes: string[]; files: number; ticket?: { key: string; url: string; summary: string; type?: string; status?: string; foundIn: string; figmaLinks: string[] }; ticketNote?: string };
   };
 }
 
@@ -860,7 +860,9 @@ function reviewMarkdown(kind: 'prompt' | 'report', data: StoredReview): string {
       ? `CI: could not be read (${r.ci.error}).`
       : `CI on ${r.headSha.slice(0, 7)}: ${r.ci.checks.map((c) => `${c.name} ${c.state}${c.annotations ? ` (${c.annotations} annotations)` : ''}`).join(', ') || 'no checks'}${r.ci.infra.length ? `. Failed without code annotations (likely infrastructure, not evidence): ${r.ci.infra.join(', ')}` : ''}.`
     : '';
-  const head = `# PR #${data.number}: ${data.title}\n\n- **Repo:** ${data.repo}\n- **PR:** ${data.url}\n- **Reviewed commit:** ${r.headSha}${ciLine ? `\n- ${ciLine}` : ''}\n\n${r.summary}`;
+  const t = r.context.ticket;
+  const ticketLine = t ? `- **Ticket:** ${t.key} (${t.url})${t.status ? `, ${t.status}` : ''}: ${t.summary}` : `- **Ticket:** none found${r.context.ticketNote ? ` (${r.context.ticketNote})` : ''}`;
+  const head = `# PR #${data.number}: ${data.title}\n\n- **Repo:** ${data.repo}\n- **PR:** ${data.url}\n- **Reviewed commit:** ${r.headSha}\n${ticketLine}${ciLine ? `\n- ${ciLine}` : ''}\n\n${r.summary}`;
   const findings = [group('issue', 'Issues to fix'), group('needs-device', 'Needs a device check'), group('noted', 'Also noted')].filter(Boolean).join('\n\n');
   if (kind === 'report') {
     return [head, findings || '_No findings to act on._', r.reviewBody ? `## Overall review comment\n\n${r.reviewBody}` : ''].filter(Boolean).join('\n\n') + '\n';
@@ -1098,6 +1100,12 @@ function renderReviewDrawer(project: ProjectItem, view: NonNullable<typeof revie
   const checked = h('section', { class: 'prr-section prr-checked' }, [
     h('h3', { class: 'prr-section-title' }, ['What this review was checked against']),
     h('ul', { class: 'prr-checked-list' }, [
+      h('li', {}, [
+        ctx.ticket
+          ? h('span', {}, ['Ticket ', h('button', { type: 'button', class: 'prr-link-btn', 'data-action': 'open-pr', 'data-url': ctx.ticket.url }, [ctx.ticket.key]), ` (${[ctx.ticket.type, ctx.ticket.status].filter(Boolean).join(', ')}, found in the ${ctx.ticket.foundIn}): ${ctx.ticket.summary}`])
+          : `No ticket: correctness-only review${ctx.ticketNote ? ` (${ctx.ticketNote})` : ''}`,
+      ]),
+      ...(ctx.ticket?.figmaLinks.length ? [h('li', { class: 'prr-muted' }, [`Linked designs (not reviewed yet): ${ctx.ticket.figmaLinks.length}`])] : []),
       h('li', {}, [`${ctx.files} changed file(s)`]),
       h('li', {}, [ctx.standards.length ? `Repo standards: ${ctx.standards.join(', ')}` : 'No repo standards files found']),
       h('li', {}, [ctx.wikiPages.length ? `Wiki: ${ctx.wikiPages.join(', ')}` : 'No wiki pages matched']),
@@ -1134,7 +1142,11 @@ function renderReviewDrawer(project: ProjectItem, view: NonNullable<typeof revie
         `Lost: ${result.agents.filter((a) => result.lostLenses!.includes(a.role)).map((a) => `${a.role} (${(a.error ?? 'failed').slice(0, 120)})`).join('; ')}. Findings from these lenses are missing, so "no issues" here does not mean the PR is clean. Re-review once the cause is fixed.`,
       ])
     : null;
+  const ticketChip = ctx.ticket
+    ? h('button', { type: 'button', class: 'prr-pill prr-pill-info prr-pill-jump', 'data-action': 'open-pr', 'data-url': ctx.ticket.url, title: `${ctx.ticket.summary} (checked against this ticket)` }, [`${ctx.ticket.key}${ctx.ticket.status ? ` · ${ctx.ticket.status}` : ''}`])
+    : h('span', { class: 'prr-pill prr-pill-muted', title: ctx.ticketNote ?? '' }, ['No ticket · correctness only']);
   const summaryCard = h('section', { class: 'prr-review-summary' }, [
+    h('div', { class: 'prr-ticket-row' }, [ticketChip]),
     h('p', {}, [result.summary]),
     h(
       'div',

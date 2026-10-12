@@ -52,6 +52,8 @@ export interface PromptContext {
   files?: { path: string; text: string }[];
   /** What CI says about the head commit (see ci.ts). */
   ciBlock?: string;
+  /** The JIRA ticket the PR implements, or why there is none (see jira.ts). */
+  ticketBlock?: string;
   /** Test files this PR adds or changes; the only tests a device check may run. */
   prTests?: string[];
 }
@@ -121,7 +123,7 @@ ${ctx.files.map((f) => `--- FILE ${f.path} ---\n${numbered(f.text)}`).join('\n')
 /** Everything the reviewers and the judge share, first, so same-model agents reuse the provider's prompt cache. */
 function sharedContext(ctx: PromptContext): string {
   return `${prBlock(ctx)}
-
+${ctx.ticketBlock ? `\n${ctx.ticketBlock}\n` : ''}
 ${standardsBlock(ctx)}
 
 ${teamBlock(ctx)}
