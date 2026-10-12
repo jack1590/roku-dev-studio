@@ -15,7 +15,7 @@
 
 [**Download**](https://github.com/jack1590/roku-dev-studio/releases/latest) · [Features](FEATURES.md) · [Install & build](INSTALLATION.md) · [MCP server](packages/roku-dev-studio-mcp/README.md) · [Changelog](CHANGELOG.md)
 
-![PR review result: summary, CI checks, a device check, and verified findings with draft comments](docs/images/PR_REVIEW_RESULT.png)
+![Roku Dev Studio home screen: PR Reviews and Packager on top of every device tool](docs/images/HOME_SCREEN.png)
 
 ## Contents
 
@@ -54,6 +54,8 @@ Review, verify and ship Roku pull requests without leaving the app. Everything r
 | **Follow-up reviews** | After new commits, only the new commits are reviewed and open findings carry over. |
 | **Packager** | Build, rekey, deploy and sign a Roku package in one click with the bundled [`roku-pkg-cli`](https://github.com/jack1590/roku-pkg-cli) — nothing to install. A key mismatch offers **Rekey and try again**; run history shows why a run failed. Shares projects with the `roku-pkg` terminal CLI and devices with PR Reviews, so two runs never fight over a TV. |
 
+![PR review result: summary, CI checks, a device check, and verified findings with draft comments](docs/images/PR_REVIEW_RESULT.png)
+
 | Pull requests | Packager |
 |:---:|:---:|
 | ![PR Reviews: open pull requests with review status, checks and device pool](docs/images/PR_REVIEWS.png) | ![Packager: project rail, device, signing and output, with pre-flight checks](docs/images/PACKAGER.png) |
@@ -74,10 +76,6 @@ All of upstream's tooling, in one window:
 | **Inspect** | **App Connector** (call your channel's functions over RALE), **Network Inspector** (MITM proxy, traffic rules, HAR / pcap), live CPU and memory charts |
 | **Automate** | **Action Scripts** builder and runner with variables, conditionals and PDF reports; `rds` CLI; **MCP server** so Cursor, Claude or VS Code can drive a real device |
 | **Analyze** | Roku's `sca-cmd` static analysis with links to the certification rules, BrightScript Fiddle, log file viewer |
-
-| Remote + device performance | App Connector (RALE) | Action Scripts |
-|:---:|:---:|:---:|
-| ![Remote with live device performance charts](docs/images/REMOTE_WITH_DEVICE_PERFORMANCE.png) | ![App Connector](docs/images/APP_CONNECTOR.png) | ![Action Scripts builder](docs/images/ACTION-SCRIPTS_BUILDER.png) |
 
 Every feature, with screenshots: **[FEATURES.md](FEATURES.md)**.
 
