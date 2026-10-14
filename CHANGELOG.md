@@ -8,6 +8,13 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.2]
+
+### Fixed
+- **Replies in PR threads were never posted.** Posting dropped any chosen comment whose post id is not a finding id, which is every reply ("<id>-reply-<n>"), so only the new comments went out. Replies are posted now.
+- If GitHub refuses a reply in its thread (for example an outdated one), the reply is posted as a PR comment that mentions the author and links the thread, instead of failing.
+- Posting stops with a clear message when a chosen comment is no longer on the review, instead of silently skipping it.
+
 ## [1.4.1]
 
 ### Added
@@ -163,7 +170,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/paramount-engineering/roku-dev-studio/compare/v1.2.0...v1.3.0
