@@ -419,7 +419,10 @@ async function execute(job: Job): Promise<void> {
             prFiles,
           },
         }
-      : {}),
+      : // Full re-review: the judge re-checks what the last review left open, so a real finding the reviewers miss this time is not lost.
+        openBefore.length
+        ? { recheck: openBefore }
+        : {}),
   });
 
   // Device time only when a finding needs proof and a test of this PR exercises it.

@@ -199,7 +199,7 @@ Also say whether the whole PR deserves a manual device check even with no specif
 
 Write the GitHub comments a human reviewer would post:
 - "comment" on every finding you keep (verdict "real"): the exact text of an inline PR comment on that file and line. Follow the comment style in the team instructions when there is one. Otherwise: pointed and specific, one concrete ask ("Could we …?") rather than a list, no praise or filler. Write as a teammate: never mention AI, a judge, reviewers, lenses or confidence. For a needsDevice finding, phrase it as something to verify, not as fact.
-- "reviewBody": the overall review comment for the PR, 1 to 4 short sentences or bullets in the same style, or "" when there is nothing to say beyond the inline comments.
+- "reviewBody": the overall review comment for the PR, 1 to 4 short sentences or bullets in the same style, or "" when there is nothing to say beyond the inline comments. Never repeat a point an inline comment already makes.
 
 ${SEVERITY}
 ${LOCATION} Carry the location from the finding you kept and correct it against the diff when it is wrong.
@@ -209,9 +209,9 @@ ${ctx.discussionBlock ? `${DISCUSSION_TASK}\n${ctx.discussionBlock}\n\n` : ''}Te
 Reviewer findings (JSON; "raisedBy" = the lenses that raised it; copy it to "sources"):
 ${JSON.stringify(findings, null, 2)}
 ${previous.length ? `
-Still-open findings from the previous review, in files the new commits touched (JSON). Check each against the current code and return it in "findings" with "previousId" set to its id: verdict "real" if it is still there (update the location), "dismissed" with reasoning starting "Fixed in the new commits:" if the commits fixed it. Do not drop any of them.
+Still-open findings from the previous review (JSON). Check each against the current code and return it in "findings" with "previousId" set to its id: verdict "real" if it is still there (update the location), "dismissed" with reasoning starting "Fixed in the new commits:" if it is gone, or with your reason if the code shows it was never real. Do not drop any of them.
 ${JSON.stringify(previous, null, 2)}
 ` : ''}
 Reply with ONE JSON object and nothing else:
-{"summary":"2-4 sentences on the PR overall","reviewBody":"overall PR comment, or empty","deviceRecommended":false,"deviceReason":"why, if recommended","findings":[{"title":"short summary","detail":"what is wrong and the fix","severity":"info|minor|major|critical","file":"path","line":1,"endLine":1,"verdict":"real|dismissed","needsDevice":false,"deviceCheck":"","tests":[],"confidence":0.0,"reasoning":"what you read in the code that decides it; never mention reviewers, lenses, merging or this review process","sources":["lens labels that raised it"],"comment":"the inline GitHub comment text (verdict real only)","previousId":"only for a previous finding"${ctx.discussionBlock ? ',"discussion":{"thread":"thread id, only when a thread already raises it","reply":"reply to post in that thread, or empty"}' : ''}}]}`;
+{"summary":"2-4 sentences on the PR overall","reviewBody":"overall PR comment, or empty","deviceRecommended":false,"deviceReason":"why, if recommended","findings":[{"title":"short summary","detail":"what is wrong and the fix","severity":"info|minor|major|critical","file":"path","line":1,"endLine":1,"verdict":"real|dismissed","needsDevice":false,"deviceCheck":"","tests":[],"confidence":0.0,"reasoning":"what you read in the code that decides it; never mention reviewers, lenses, the severity a reviewer suggested, merging or this review process","sources":["lens labels that raised it"],"comment":"the inline GitHub comment text (verdict real only)","previousId":"only for a previous finding"${ctx.discussionBlock ? ',"discussion":{"thread":"thread id, only when a thread already raises it","reply":"reply to post in that thread, or empty"}' : ''}}]}`;
 }
