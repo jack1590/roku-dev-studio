@@ -8,6 +8,13 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.3]
+
+### Changed
+- **Judge reads around the code it verifies.** A code comment that documents a deliberate choice counts as the author's reasoning: the judge weighs it, and a finding it keeps must answer it. When the same flaw applies to a sibling field or path, it goes in the same finding.
+- **Judge reasoning stays about the code.** It no longer mentions reviewers, lenses or merged findings, which showed up in "Copy fix prompt".
+- **Exports (Copy fix prompt / report):** say when CI was still running at review time; show a finding's PR-discussion state (resolved, already raised, reply drafted) and label reply drafts "Suggested reply in the thread"; the fix prompt only lists the device and CI steps when a finding needs them.
+
 ## [1.4.2]
 
 ### Fixed
@@ -170,7 +177,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.3.0...v1.4.0
