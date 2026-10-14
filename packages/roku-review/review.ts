@@ -127,6 +127,8 @@ export interface ReviewInput {
   ticket?: TicketLookup;
   /** Re-review after new commits: previous findings to re-check (files the commits touched) and to carry over as they are. */
   previous?: { sinceSha: string; recheck: ReviewFinding[]; carry: ReviewFinding[]; prFiles: string[] };
+  /** Full re-review: the previous review's still-open findings, re-checked by the judge so a real one is not lost between runs. */
+  recheck?: ReviewFinding[];
   /** Findings the team dismissed before in this repo (already in the prompt via ctx.dismissedBlock); matches go to Dismissed. */
   dismissals?: Dismissal[];
   /** The PR's existing threads (already in the judge prompt via ctx.discussionBlock). */
@@ -207,6 +209,7 @@ function parseReviewerFindings(text: string): RawFinding[] | null {
 export async function runReview(input: ReviewInput): Promise<ReviewResult> {
   const startedAt = Date.now();
   const changed = new Set(input.previous?.prFiles ?? input.changedFiles);
+  const recheck = input.previous?.recheck ?? input.recheck ?? [];
   const reviewers: [LensId, string | undefined][] = [
     ['correctness', input.models.reviewer1],
     ['security', input.models.reviewer2],
@@ -261,7 +264,7 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
     apiKey: input.apiKey,
     model: input.models.judge,
     cwd: input.worktree,
-    prompt: judgePrompt(input.ctx, mergeFindings(byLens as unknown as Record<string, Record<string, unknown>[]>), (input.previous?.recheck ?? []).map((f) => ({ id: f.id, title: f.title, detail: f.detail, severity: f.severity, file: f.file, line: f.line }))),
+    prompt: judgePrompt(input.ctx, mergeFindings(byLens as unknown as Record<string, Record<string, unknown>[]>), recheck.map((f) => ({ id: f.id, title: f.title, detail: f.detail, severity: f.severity, file: f.file, line: f.line }))),
     name: `RDS review ${input.ctx.repo}#${input.ctx.prNumber} (judge)`,
     signal: input.signal,
   };
@@ -327,7 +330,7 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
       const verdict = raw.verdict === 'dismissed' ? 'dismissed' : 'real';
       const needsDevice = raw.needsDevice === true;
       // A re-checked previous finding keeps its id, so comments and history line up across reviews.
-      const id = (input.previous?.recheck.some((f) => f.id === str(raw.previousId)) ? str(raw.previousId) : '') || fingerprint(file, title);
+      const id = (recheck.some((f) => f.id === str(raw.previousId)) ? str(raw.previousId) : '') || fingerprint(file, title);
       findings.push({
         id,
         title,
@@ -396,6 +399,11 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
     });
   }
 
+  if (!input.previous && input.recheck?.length) {
+    // Full re-review: a previous finding the judge did not return is kept rather than lost.
+    const have = new Set(findings.map((f) => f.id));
+    for (const f of input.recheck) if (!have.has(f.id)) findings.push({ ...f, inDiff: f.file ? changed.has(f.file) : false, reasoning: f.reasoning.startsWith('Carried over') ? f.reasoning : `Carried over from the previous review. ${f.reasoning}`.trim() });
+  }
   if (input.previous) {
     const have = new Set(findings.map((f) => f.id));
     // Untouched files: carried as they were. Re-checks the judge skipped: carried rather than lost.
