@@ -35,7 +35,7 @@ interface StoredFinding {
   status: string;
   comment?: string;
   /** Set when a PR thread already raises it: the comment is a reply posted in that thread. */
-  discussion?: { replyTo?: number; url?: string };
+  discussion?: { replyTo?: number; url?: string; lastAuthor?: string };
   postId?: string;
 }
 
@@ -142,7 +142,10 @@ export function setupPostingHandlers(deps: {
     if (!login || !author) return { success: false, error: 'Could not check who opened this PR on GitHub. Try again.' };
     if (login === author) return { success: false, error: 'This is your own PR (the GitHub token belongs to its author), so comments are not posted. Use Copy fix prompt to work on the findings instead.' };
     const general = typeof p?.general === 'string' && p.general.trim() ? p.general.slice(0, 20_000) : null;
-    const findingIds = (Array.isArray(p?.ids) ? p!.ids : []).filter((id): id is string => typeof id === 'string' && stored.result.findings.some((f) => f.id === id));
+    // Post ids, not finding ids: a reply in a thread posts as "<id>-reply-<n>".
+    const requested = (Array.isArray(p?.ids) ? p!.ids : []).filter((id): id is string => typeof id === 'string');
+    const findingIds = requested.filter((id) => stored.result.findings.some((f) => (f.postId ?? f.id) === id));
+    if (findingIds.length < requested.length) return { success: false, error: 'Some chosen comments are no longer on this review. Reopen it and try again.' };
     const maxMinutes = Math.max(0, Math.min(60, Number(p?.maxMinutes) || 0));
     const spaced = p?.spaced === true && maxMinutes > 0;
 
@@ -188,9 +191,17 @@ export function setupPostingHandlers(deps: {
             if (f.discussion?.replyTo) {
               // Already discussed: answer in that thread.
               const reply = await github(token, 'POST', `/repos/${repo}/pulls/${number}/comments/${f.discussion.replyTo}/replies`, { body });
-              if (!reply.ok) throw new Error(`GitHub returned HTTP ${reply.status} replying in the thread.`);
+              if (reply.ok) {
+                url = (reply.json as { html_url?: string })?.html_url;
+              } else {
+                // GitHub can refuse a reply in the thread (e.g. an outdated one): post it as a PR comment pointing at it.
+                mainWarn(`[reviews] reply in thread ${f.discussion.replyTo} on ${repo}#${number} refused (HTTP ${reply.status}); posting as a PR comment`);
+                const to = f.discussion.lastAuthor ? `@${f.discussion.lastAuthor} ` : '';
+                const res = await github(token, 'POST', `/repos/${repo}/issues/${number}/comments`, { body: `${to}Re: [this thread](${f.discussion.url ?? ''})\n\n${body}` });
+                if (!res.ok) throw new Error(`GitHub returned HTTP ${reply.status} replying in the thread and ${res.status} as a PR comment.`);
+                url = (res.json as { html_url?: string })?.html_url;
+              }
               posted = true;
-              url = (reply.json as { html_url?: string })?.html_url;
             } else if (f.file && f.line) {
               const inline = await github(token, 'POST', `/repos/${repo}/pulls/${number}/comments`, {
                 body,
