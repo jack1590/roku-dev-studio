@@ -8,6 +8,12 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.4]
+
+### Changed
+- **"Needs a device check" only when a device run of this PR can settle it.** When the code that would trigger a finding is not wired up yet (a feature not registered, an event nothing emits, a later part of the work), the judge files it under "Also noted" with a question for the later part, instead of asking for a device check that cannot run.
+- **The judge searches before calling something unsettled.** When a finding depends on who sends, emits or calls something, it looks for those senders or callers in the repo first.
+
 ## [1.4.3]
 
 ### Changed
@@ -177,7 +183,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.3...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.4...HEAD
+[1.4.4]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.0...v1.4.1
