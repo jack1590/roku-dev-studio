@@ -8,6 +8,13 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.5]
+
+### Changed
+- **A re-review keeps what the last review found.** On a full re-review (same commit, or incremental review off), the previous review's still-open findings go to the judge to re-check. A real finding the reviewers happen to miss this run is no longer lost; one the judge does not return is carried over and marked so.
+- **The overall comment doesn't repeat the inline comments.**
+- **Judge reasoning never cites the severity a reviewer suggested** (it showed up in Copy fix prompt as "'Major' overstates it").
+
 ## [1.4.4]
 
 ### Changed
@@ -183,7 +190,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.4...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.5...HEAD
+[1.4.5]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.1...v1.4.2
