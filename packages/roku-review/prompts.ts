@@ -184,6 +184,9 @@ export function judgePrompt(ctx: PromptContext, findings: unknown[], previous: P
 You are a senior Roku engineer acting as the judge over three independent AI code reviews of the pull request above. Each reviewer had a different lens. Findings that several reviewers raised are already merged ("raisedBy" lists them); merge any remaining duplicates, verify each finding against the code, and rule.
 
 Your job is to verify, not to review the PR again. Each finding carries "evidence": the code its reviewer quoted. Rule from that evidence, the diff and the changed files first. Open other files only when they do not settle it: a finding with no or partial evidence, or one whose truth depends on code outside the quote (a caller that may already validate, a helper that may handle invalid, an observer that may be unobserved elsewhere). Most false positives come from exactly that, so check those before ruling real. Do not hunt for new issues; add one only if you meet a serious problem while verifying.
+Read the code around what you verify, not only the quoted lines:
+- A code comment that documents a deliberate choice is the author's reasoning. Weigh it; if you still keep the finding, its comment must address that reasoning instead of ignoring it.
+- When the same flaw applies to a sibling field, branch or path, cover them in the same finding instead of only the one quoted.
 
 No speculation. For each finding decide:
 - "verdict": "real" when the code proves it, "dismissed" when the code disproves it or it is not worth acting on (say why).
@@ -208,5 +211,5 @@ Still-open findings from the previous review, in files the new commits touched (
 ${JSON.stringify(previous, null, 2)}
 ` : ''}
 Reply with ONE JSON object and nothing else:
-{"summary":"2-4 sentences on the PR overall","reviewBody":"overall PR comment, or empty","deviceRecommended":false,"deviceReason":"why, if recommended","findings":[{"title":"short summary","detail":"what is wrong and the fix","severity":"info|minor|major|critical","file":"path","line":1,"endLine":1,"verdict":"real|dismissed","needsDevice":false,"deviceCheck":"","tests":[],"confidence":0.0,"reasoning":"what you read in the code that decides it","sources":["lens labels that raised it"],"comment":"the inline GitHub comment text (verdict real only)","previousId":"only for a previous finding"${ctx.discussionBlock ? ',"discussion":{"thread":"thread id, only when a thread already raises it","reply":"reply to post in that thread, or empty"}' : ''}}]}`;
+{"summary":"2-4 sentences on the PR overall","reviewBody":"overall PR comment, or empty","deviceRecommended":false,"deviceReason":"why, if recommended","findings":[{"title":"short summary","detail":"what is wrong and the fix","severity":"info|minor|major|critical","file":"path","line":1,"endLine":1,"verdict":"real|dismissed","needsDevice":false,"deviceCheck":"","tests":[],"confidence":0.0,"reasoning":"what you read in the code that decides it; never mention reviewers, lenses, merging or this review process","sources":["lens labels that raised it"],"comment":"the inline GitHub comment text (verdict real only)","previousId":"only for a previous finding"${ctx.discussionBlock ? ',"discussion":{"thread":"thread id, only when a thread already raises it","reply":"reply to post in that thread, or empty"}' : ''}}]}`;
 }

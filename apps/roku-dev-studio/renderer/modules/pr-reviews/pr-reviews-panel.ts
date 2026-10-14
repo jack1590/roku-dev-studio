@@ -913,7 +913,8 @@ function reviewMarkdown(kind: 'prompt' | 'report', data: StoredReview): string {
       f.deviceCheck ? `- **How to verify on a device:** ${f.deviceCheck}` : '',
       f.status === 'needs-device' ? `- **PR tests that exercise it:** ${f.tests?.length ? f.tests.join(', ') : 'none in this PR'}` : '',
       f.deviceEvidence ? `- **Device evidence:**\n\n\`\`\`\n${f.deviceEvidence}\n\`\`\`` : '',
-      f.comment ? `- **Suggested review comment:** ${f.comment.replace(/\n+/g, ' ')}` : '',
+      f.discussion ? `- **In the PR discussion:** ${f.discussion.resolved ? 'resolved' : f.discussion.reply ? 'raised before; a reply is drafted' : 'already raised, not posted again'}. Last message, @${f.discussion.lastAuthor}: "${f.discussion.last.replace(/\s+/g, ' ')}"${f.discussion.url ? ` (${f.discussion.url})` : ''}` : '',
+      f.comment ? `- **${f.discussion?.reply ? 'Suggested reply in the thread' : 'Suggested review comment'}:** ${f.comment.replace(/\n+/g, ' ')}` : '',
     ]
       .filter(Boolean)
       .join('\n');
@@ -926,16 +927,26 @@ function reviewMarkdown(kind: 'prompt' | 'report', data: StoredReview): string {
       ? `CI: could not be read (${r.ci.error}).`
       : `CI on ${r.headSha.slice(0, 7)}: ${r.ci.checks.map((c) => `${c.name} ${c.state}${c.annotations ? ` (${c.annotations} annotations)` : ''}`).join(', ') || 'no checks'}${r.ci.infra.length ? `. Failed without code annotations (likely infrastructure, not evidence): ${r.ci.infra.join(', ')}` : ''}.`
     : '';
+  const ciPending = !!r.ci && r.ci.checks.some((c) => /pending|queued|in_progress|waiting|expected/i.test(c.state));
   const t = r.context.ticket;
   const ticketLine = t ? `- **Ticket:** ${t.key} (${t.url})${t.status ? `, ${t.status}` : ''}: ${t.summary}` : `- **Ticket:** none found${r.context.ticketNote ? ` (${r.context.ticketNote})` : ''}`;
-  const head = `# PR #${data.number}: ${data.title}\n\n- **Repo:** ${data.repo}\n- **PR:** ${data.url}\n- **Reviewed commit:** ${r.headSha}\n${ticketLine}${ciLine ? `\n- ${ciLine}` : ''}\n\n${r.summary}`;
+  const head = `# PR #${data.number}: ${data.title}\n\n- **Repo:** ${data.repo}\n- **PR:** ${data.url}\n- **Reviewed commit:** ${r.headSha}\n${ticketLine}${ciLine ? `\n- ${ciLine}` : ''}${ciPending ? '\n- **CI was still running at review time:** a failure that lands later is not part of this review; re-review once CI finishes.' : ''}\n\n${r.summary}`;
   const findings = [group('issue', 'Issues to fix'), group('needs-device', 'Needs a device check'), group('noted', 'Also noted')].filter(Boolean).join('\n\n');
   if (kind === 'report') {
     return [head, findings || '_No findings to act on._', r.reviewBody ? `## Overall review comment\n\n${r.reviewBody}` : ''].filter(Boolean).join('\n\n') + '\n';
   }
+  // Steps only for what this review has: no device step without a device finding, no CI note without CI findings.
+  const acted = r.findings.filter((f) => f.status === 'issue' || f.status === 'needs-device' || f.status === 'noted');
+  const steps = [
+    'Verify each finding below in the code before changing anything. Drop any that the code disproves, and say why.',
+    ...(acted.some((f) => f.status === 'needs-device') ? ['For each "Needs a device check" finding, run its check on a Roku (with Roku tools such as a Roku MCP server if you have them, or the PR tests listed). Report confirmed or refuted with the evidence.'] : []),
+    `Fix only what you confirmed, with the smallest change. Follow the repo's own rules (AGENTS.md, CONTRIBUTING.md, lint config).${acted.some((f) => f.ci) ? ' Findings marked From CI are facts from the check run.' : ''}`,
+    'Run the repo\'s build and tests. Do not commit or push unless asked.',
+    'Finish with a short list: each finding, verified or not, fixed or not, and how.',
+  ];
   return [
     head,
-    `## Your task\n\nCheck out the PR at the reviewed commit (\`gh pr checkout ${data.number}\` in ${data.repo}, then \`git checkout ${r.headSha}\`).\n\n1. Verify each finding below in the code before changing anything. Drop any that the code disproves, and say why.\n2. For each "Needs a device check" finding, run its check on a Roku (with Roku tools such as a Roku MCP server if you have them, or the PR tests listed). Report confirmed or refuted with the evidence.\n3. Fix only what you confirmed, with the smallest change. Follow the repo's own rules (AGENTS.md, CONTRIBUTING.md, lint config). Findings marked From CI are facts from the check run.\n4. Run the repo's build and tests. Do not commit or push unless asked.\n5. Finish with a short list: each finding, verified or not, fixed or not, and how.`,
+    `## Your task\n\nCheck out the PR at the reviewed commit (\`gh pr checkout ${data.number}\` in ${data.repo}, then \`git checkout ${r.headSha}\`).\n\n${steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
     findings || '_No findings to act on._',
   ].join('\n\n') + '\n';
 }
