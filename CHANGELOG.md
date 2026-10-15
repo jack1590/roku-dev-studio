@@ -8,6 +8,14 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.7]
+
+### Changed
+- **The judge checks every order before dismissing.** An "X can only happen after Y" argument now has to hold for the reverse sequence and for any other event, from any feature, that reaches the same state.
+- **Side effects on shared resources get every trigger checked.** When a change adds a teardown, stop, cancel or reset of something other code also uses, the judge checks every path that can fire it.
+- **Suggested fixes are checked for new side-effect paths.** A comment that proposes a fix (for example "emit a teardown here") must say so, or suggest a narrower fix, when it could fire in cases it was not meant for.
+- **Re-reviews look past the touched files.** When new commits change what a handler or reducer does, reviewers and judge also open the other code that reacts to the same events or state.
+
 ## [1.4.6]
 
 ### Changed
@@ -195,7 +203,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.6...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.7...HEAD
+[1.4.7]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.3...v1.4.4
