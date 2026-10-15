@@ -941,6 +941,7 @@ function reviewMarkdown(kind: 'prompt' | 'report', data: StoredReview): string {
     'Verify each finding below in the code before changing anything. Drop any that the code disproves, and say why.',
     ...(acted.some((f) => f.status === 'needs-device') ? ['For each "Needs a device check" finding, run its check on a Roku (with Roku tools such as a Roku MCP server if you have them, or the PR tests listed). Report confirmed or refuted with the evidence.'] : []),
     `Fix only what you confirmed, with the smallest change. Follow the repo's own rules (AGENTS.md, CONTRIBUTING.md, lint config).${acted.some((f) => f.ci) ? ' Findings marked From CI are facts from the check run.' : ''}`,
+    ...(acted.some((f) => f.status === 'noted') ? ['"Also noted" items are observations or questions for later work: say whether each holds, but do not change code for them.'] : []),
     'Run the repo\'s build and tests. Do not commit or push unless asked.',
     'Finish with a short list: each finding, verified or not, fixed or not, and how.',
   ];
