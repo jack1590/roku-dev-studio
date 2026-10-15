@@ -8,6 +8,14 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.8]
+
+### Changed
+- **Every reviewer runs three extra checks, whatever its lens** (generic, for any repository):
+  - **Wiring:** for each new or changed entry point (event, message, command, route, handler, public function, config key), who emits or calls it and under which flags or gates, and whether the flag's own dependency rules guarantee what the new code relies on.
+  - **Docs the repo keeps:** contract or API docs, registries, changelogs, READMEs and schema files that describe what the change adds are updated to match.
+  - **Comments:** comments the change adds or touches name things that exist and still describe the code.
+
 ## [1.4.7]
 
 ### Changed
@@ -203,7 +211,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.7...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.8...HEAD
+[1.4.8]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.4...v1.4.5
