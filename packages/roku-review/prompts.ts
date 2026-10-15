@@ -102,7 +102,7 @@ function teamBlock(ctx: PromptContext): string {
 function changeBlock(ctx: PromptContext): string {
   const notes = ctx.diffNotes.length ? `\nNot fully shown below (open the files if you need them):\n${ctx.diffNotes.map((n) => `- ${n}`).join('\n')}` : '';
   const scope = ctx.sinceSha
-    ? `This is a re-review after new commits. The diff below is ONLY the commits since ${ctx.sinceSha.slice(0, 7)}, which was already reviewed; review those changes and the code they affect, not the rest of the PR. The whole PR diff is in .rds-review/pr.diff if you need context.`
+    ? `This is a re-review after new commits. The diff below is ONLY the commits since ${ctx.sinceSha.slice(0, 7)}, which was already reviewed; review those changes and the code they affect, not the rest of the PR. When the new commits change what a handler or reducer does (a new side effect, a new transition), also open the other code that reacts to the same events or changes the same state, even in files these commits did not touch: that is where interaction bugs hide. The whole PR diff is in .rds-review/pr.diff if you need context.`
     : `The whole PR diff is also in .rds-review/pr.diff, uncut, if something below is shortened.`;
   return `${scope}
 
@@ -188,6 +188,8 @@ Read the code around what you verify, not only the quoted lines:
 - A code comment that documents a deliberate choice is the author's reasoning. Weigh it; if you still keep the finding, its comment must address that reasoning instead of ignoring it.
 - When the same flaw applies to a sibling field, branch or path, cover them in the same finding instead of only the one quoted.
 - When a finding depends on who sends, emits or calls something ("another task could send this event", "a caller could pass invalid"), search the repo for those senders or callers before ruling. Do not keep a finding as unsettled when a search would settle it.
+- Before dismissing a finding with an ordering argument ("X can only happen after Y"), check the other orders too: the reverse sequence, and any other event, including from another feature or module, that reaches the same state. Dismiss only when every order is safe.
+- When the change adds a side effect on a shared resource (a teardown, stop, cancel or reset of something other code also uses, like a shared video node, task, timer or cache), check every path that can trigger it, not only the one the change was written for.
 
 No speculation. For each finding decide:
 - "verdict": "real" when the code proves it, "dismissed" when the code disproves it or it is not worth acting on (say why).
@@ -196,6 +198,8 @@ No speculation. For each finding decide:
 - "tests": for a needsDevice finding only, the test files of THIS PR that exercise it (from the list below), so a device run can execute them. Leave it empty when none does. Never ask for or plan new tests here; when a missing test matters, say so in the finding's comment instead.
 - "confidence": 0 to 1, how sure you are after reading the code. 0.9+ only when you verified it.
 Also say whether the whole PR deserves a manual device check even with no specific finding ("deviceRecommended"; shown to the reader, nothing runs automatically). A device run costs minutes on a shared TV, so keep it for real risk: true only when the change alters runtime behaviour in threading, playback, focus/navigation, deep links, app startup, or memory-sensitive screens AND there is a concrete behaviour that reading the code cannot settle. False for docs, tests, config, styling-only, renames, or small changes whose effect the code makes clear. When true, "deviceReason" names the exact behaviour to observe.
+
+A suggested fix must not open a new path to a side effect. Before proposing one (e.g. "emit a teardown here"), check what else can reach that code; if the fix could fire in a case it was not meant for, say so in the comment or suggest a narrower fix.
 
 Write the GitHub comments a human reviewer would post:
 - "comment" on every finding you keep (verdict "real"): the exact text of an inline PR comment on that file and line. Follow the comment style in the team instructions when there is one. Otherwise: pointed and specific, one concrete ask ("Could we …?") rather than a list, no praise or filler. Write as a teammate: never mention AI, a judge, reviewers, lenses or confidence. For a needsDevice finding, phrase it as something to verify, not as fact.
