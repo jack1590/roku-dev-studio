@@ -72,6 +72,12 @@ const LOCATION = `Location: "file" is the repository-relative path exactly as th
 /** Reading discipline: input tokens (agents re-reading the repo) are almost all of a review's cost. */
 const FOCUS = `Work from the diff. Open a file only to check a specific suspicion: the changed files, and the callers or callees of what changed. Do not survey the repository or read files unrelated to the change. Batch lookups (one grep for several names) instead of many single searches. Stop once your lens has nothing more to find in this change.`;
 
+/** Checks every reviewer runs whatever its lens: generic, so they apply to any repository. */
+const ALWAYS_CHECK = `Whatever your lens, also check these three, and only for what this change adds or alters:
+- Wiring: for each new or changed entry point (event, message, command, route, handler, public function, config key), find who emits or calls it and under which feature flags, config gates or preconditions. If the new code relies on a gate or another component being active, check that the flag's own dependency rules (validators, defaults, docs) guarantee it.
+- Docs the repo keeps: if the repository documents what this change adds or changes (contract or API docs, registries or lists of types, changelogs, READMEs, schema files), check those were updated to match.
+- Comments: check that code comments the change adds or touches refer to things that exist, with their real names, and still describe what the code does.`;
+
 const NOISE = `Do not report: style or formatting preferences that no repository rule requires, restatements of what the diff obviously does, praise, or the same problem twice.`;
 
 function prBlock(ctx: PromptContext): string {
@@ -147,6 +153,8 @@ ${LENSES[lens].brief}
 Your lens says what to hunt for, not what you may report: if you notice something serious outside it, report it anyway.
 
 ${FOCUS}
+
+${ALWAYS_CHECK}
 
 Do not guess about runtime behaviour. If a problem depends on timing, threads, rendering, focus, playback or memory over time and you cannot prove it from the code, still report it, but say exactly what would confirm it on a device in "deviceCheck".
 
