@@ -8,6 +8,11 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.6]
+
+### Changed
+- **Copy fix prompt leaves "Also noted" alone.** When a review has noted items, the fix prompt tells the agent they are observations or questions for later work: report whether each holds, but change no code for them.
+
 ## [1.4.5]
 
 ### Changed
@@ -190,7 +195,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.5...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.6...HEAD
+[1.4.6]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.2...v1.4.3
