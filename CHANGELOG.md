@@ -8,6 +8,12 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.4.9]
+
+### Fixed
+- **Long PR descriptions were cut at 4,000 characters**, so sections near the end (often "settled in earlier review rounds" or "remaining items by part") never reached the reviewers or judge, and settled points kept coming back. The limit is now 16,000 characters; a longer description keeps its start and its end and drops the middle.
+- **Re-reviews no longer carry findings unchecked.** After new commits, every still-open finding goes back to the judge. Before, a finding whose anchor file was untouched was carried as-is even when what it was about (another file, a doc) had changed.
+
 ## [1.4.8]
 
 ### Changed
@@ -211,7 +217,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.8...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.9...HEAD
+[1.4.9]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.8...v1.4.9
 [1.4.8]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.5...v1.4.6

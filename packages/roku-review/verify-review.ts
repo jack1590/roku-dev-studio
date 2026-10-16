@@ -13,6 +13,7 @@ import { excerptConsole, makeRedactor, testResult, TEST_FILE } from './device';
 import { applyDismissals, dismissalPromptBlock, matchDismissal, type Dismissal } from './suppressions';
 import type { ReviewFinding } from './review';
 import { discussionPromptBlock, toThreads } from './discussion';
+import { clipDescription } from './prompts';
 import { ciFindings, ciInfraFailures, ciPromptBlock, isCodeAnnotation } from './ci';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -214,6 +215,15 @@ async function deviceChecks(): Promise<void> {
   assert.equal(t2.markerId, 'abc', 'our finding id is read from the marker');
   assert.ok(discussionPromptBlock({ threads }).includes('"ourFinding": "abc"'));
   assert.ok(discussionPromptBlock({ threads: [], error: 'HTTP 403' }).includes('could not be read'));
+}
+
+// Long PR descriptions keep their start and their end (where "settled in earlier rounds" sections live).
+{
+  assert.equal(clipDescription('short'), 'short');
+  const long = `START${'x'.repeat(20_000)}## Settled in earlier review rounds\nanswer`;
+  const clipped = clipDescription(long);
+  assert.ok(clipped.startsWith('START') && clipped.endsWith('## Settled in earlier review rounds\nanswer'));
+  assert.ok(clipped.length < 16_200 && clipped.includes('characters of the description cut here'));
 }
 
 void buildChecks().then(deviceChecks).then(() => console.log('verify-review: ok'));
