@@ -80,8 +80,19 @@ const ALWAYS_CHECK = `Whatever your lens, also check these three, and only for w
 
 const NOISE = `Do not report: style or formatting preferences that no repository rule requires, restatements of what the diff obviously does, praise, or the same problem twice.`;
 
+const DESCRIPTION_MAX = 16_000;
+/**
+ * Authors answer earlier review rounds near the end of the description ("settled", "remaining
+ * items"), so a long one keeps its start and its end and drops the middle. Pure; pinned by verify-review.ts.
+ */
+export function clipDescription(body: string): string {
+  if (body.length <= DESCRIPTION_MAX) return body;
+  const head = 6_000, tail = DESCRIPTION_MAX - head;
+  return `${body.slice(0, head)}\n\n… (${body.length - DESCRIPTION_MAX} characters of the description cut here) …\n\n${body.slice(-tail)}`;
+}
+
 function prBlock(ctx: PromptContext): string {
-  const body = ctx.body.trim() ? ctx.body.trim().slice(0, 4000) : '(no description)';
+  const body = ctx.body.trim() ? clipDescription(ctx.body.trim()) : '(no description)';
   return `Repository: ${ctx.repo}
 Pull request #${ctx.prNumber} by ${ctx.author}: ${ctx.title}
 Branch: ${ctx.headRef} → ${ctx.baseRef}
