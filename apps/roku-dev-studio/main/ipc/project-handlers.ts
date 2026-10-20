@@ -74,6 +74,11 @@ export function getProjectRecord(id: string): ProjectRecord | undefined {
   return findProject(id);
 }
 
+/** Every project, for the MCP bridge's repo → project lookup. */
+export function listProjectRecords(): ProjectRecord[] {
+  return readRegistry();
+}
+
 export { resolveHomePath };
 
 function findProject(id: unknown): ProjectRecord | undefined {
