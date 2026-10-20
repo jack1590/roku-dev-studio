@@ -8,6 +8,13 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.5.2]
+
+### Added
+- **Review filter "Reviewing now"**, with a count: PRs whose review is queued or running.
+- **Sort "Recently reviewed"**: newest finished review first; PRs being reviewed or never reviewed follow, by activity.
+- **"reviewed 5m ago" on every reviewed row**, next to its chips, so you can see when each review ran without hovering.
+
 ## [1.5.1]
 
 ### Fixed
@@ -232,7 +239,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.2...HEAD
+[1.5.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.9...v1.5.0
 [1.4.9]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.8...v1.4.9

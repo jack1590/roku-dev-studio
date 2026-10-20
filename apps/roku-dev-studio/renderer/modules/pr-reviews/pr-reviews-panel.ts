@@ -245,10 +245,11 @@ let repoFilter = '';
 let search = '';
 
 /** Review-based list filter and sort, next to the GitHub-state quick filters. */
-type ReviewFilter = 'any' | 'not-reviewed' | 'issues' | 'device' | 'to-post' | 'posted' | 'outdated' | 'good';
-type SortBy = 'updated' | 'oldest' | 'issues' | 'unreviewed' | 'largest' | 'smallest';
+type ReviewFilter = 'any' | 'reviewing' | 'not-reviewed' | 'issues' | 'device' | 'to-post' | 'posted' | 'outdated' | 'good';
+type SortBy = 'updated' | 'reviewed' | 'oldest' | 'issues' | 'unreviewed' | 'largest' | 'smallest';
 const REVIEW_FILTERS: { id: ReviewFilter; label: string }[] = [
   { id: 'any', label: 'Any review state' },
+  { id: 'reviewing', label: 'Reviewing now' },
   { id: 'not-reviewed', label: 'Not reviewed' },
   { id: 'issues', label: 'Issues to fix' },
   { id: 'device', label: 'Needs a device check' },
@@ -259,6 +260,7 @@ const REVIEW_FILTERS: { id: ReviewFilter; label: string }[] = [
 ];
 const SORTS: { id: SortBy; label: string }[] = [
   { id: 'updated', label: 'Recently updated' },
+  { id: 'reviewed', label: 'Recently reviewed' },
   { id: 'oldest', label: 'Least recently updated' },
   { id: 'issues', label: 'Most issues first' },
   { id: 'unreviewed', label: 'Not reviewed first' },
@@ -1460,7 +1462,8 @@ function renderReviewControls(project: ProjectItem, pr: PullRequestItem): { chip
       : facts.posted > 0
         ? [chip('warn', `${facts.posted} of ${facts.postable} posted`, 'Some drafted comments are not on GitHub yet. Open the review to post the rest.')]
         : [chip('info', `${facts.postable} to post`, 'Drafted comments not posted to GitHub yet. Open the review to post them.')];
-  const wrap = h('span', { class: 'prr-review-chips' }, [label, ...incomplete, ...postChip, ...(outdated ? [chip('muted', 'Outdated', 'New commits since this review')] : [])]);
+  const ago = summary.finishedAt ? [h('span', { class: 'prr-muted prr-reviewed-ago', title: new Date(summary.finishedAt).toLocaleString() }, [`reviewed ${timeAgo(new Date(summary.finishedAt).toISOString())}`])] : [];
+  const wrap = h('span', { class: 'prr-review-chips' }, [label, ...incomplete, ...postChip, ...(outdated ? [chip('muted', 'Outdated', 'New commits since this review')] : []), ...ago]);
   if (summary.finishedAt) label.setAttribute('title', `Reviewed ${timeAgo(new Date(summary.finishedAt).toISOString())}${label.getAttribute('title') ? `. ${label.getAttribute('title')}` : ''}`);
   return { chip: wrap, buttons: [btn('view-review', 'View review'), rereview] };
 }
@@ -1562,6 +1565,8 @@ function reviewFacts(project: ProjectItem, pr: PullRequestItem, viewer: string) 
   const postable = done ? s?.posting?.postable ?? 0 : 0;
   const posted = done ? s?.posting?.posted ?? 0 : 0;
   return {
+    reviewing: s?.status === 'queued' || s?.status === 'running',
+    finishedAt: done ? s?.finishedAt ?? 0 : 0,
     reviewed: done,
     outdated: done && !!s?.headSha && s.headSha !== pr.headSha,
     issues: done ? s?.counts?.issue ?? 0 : 0,
@@ -1578,7 +1583,8 @@ function matchesReview(project: ProjectItem, pr: PullRequestItem, viewer: string
   if (filter === 'any') return true;
   const f = reviewFacts(project, pr, viewer);
   switch (filter) {
-    case 'not-reviewed': return !f.reviewed;
+    case 'reviewing': return f.reviewing;
+    case 'not-reviewed': return !f.reviewed && !f.reviewing;
     case 'issues': return f.issues > 0;
     case 'device': return f.device > 0;
     case 'to-post': return f.toPost > 0;
@@ -1594,6 +1600,8 @@ function sortPrs(project: ProjectItem, items: PullRequestItem[], viewer: string)
   const byUpdated = (a: PullRequestItem, b: PullRequestItem) => updated(b) - updated(a);
   const list = [...items];
   switch (sortBy) {
+    // Newest finished review first; running and unreviewed PRs after, by activity.
+    case 'reviewed': return list.sort((a, b) => reviewFacts(project, b, viewer).finishedAt - reviewFacts(project, a, viewer).finishedAt || byUpdated(a, b));
     case 'oldest': return list.sort((a, b) => updated(a) - updated(b));
     case 'largest': return list.sort((a, b) => size(b) - size(a) || byUpdated(a, b));
     case 'smallest': return list.sort((a, b) => size(a) - size(b) || byUpdated(a, b));
