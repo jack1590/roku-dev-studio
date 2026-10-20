@@ -95,6 +95,10 @@ const MCP_TOOL_GROUPS: McpToolGroup[] = [
   {
     categoryKey: 'actionScripts',
     toolNames: ['list_action_types', 'get_action_schema', 'get_capability_bundle', 'validate_script', 'send_script_to_builder']
+  },
+  {
+    categoryKey: 'reviews',
+    toolNames: ['review_start', 'review_status', 'review_get', 'review_post', 'review_list']
   }
 ];
 

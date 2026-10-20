@@ -50,6 +50,18 @@ export const settings = {
   mcpInstallToEnable: (label: string): string => `Install ${label} to enable.`,
   mcpEnableAria: (label: string): string => `Enable MCP for ${label}`,
   mcpToolsButton: 'View MCP Tools',
+  mcpPostKeyTitle: 'Posting key',
+  mcpPostKeyBlurb: 'Agents can review PRs without it. To post review comments to GitHub, an MCP client needs this key as RDS_POST_KEY in its config. Only clients you give it to can post.',
+  mcpPostKeyOn: 'Set. Clients with RDS_POST_KEY can post review comments.',
+  mcpPostKeyOff: 'Not set. Agents cannot post review comments.',
+  mcpPostKeyGenerate: 'Generate',
+  mcpPostKeyRotate: 'Rotate',
+  mcpPostKeyClear: 'Clear',
+  mcpPostKeyCopy: 'Copy',
+  mcpPostKeyCopied: 'Copied',
+  mcpPostKeyRotateConfirm: 'Rotate the posting key? Clients using the old key can no longer post.',
+  mcpPostKeyClearConfirm: 'Clear the posting key? No agent will be able to post review comments.',
+  mcpPostKeyHint: 'Shown once. Add it to a client\'s MCP config: "env": { "RDS_POST_KEY": "<key>" }',
   mcpToolsModalTitle: 'MCP Tools',
   mcpToolsModalAria: 'MCP tools exposed to AI agents',
   mcpToolsIntro: (count: number): string =>
@@ -66,6 +78,7 @@ export const settings = {
     debugger: 'Debugger',
     networkInspector: 'Network Inspector',
     actionScripts: 'Action Scripts',
+    reviews: 'PR Reviews',
   },
   // One-line description per MCP tool for the View MCP Tools modal, keyed by the tool's literal
   // MCP name (kept as-is — those are protocol identifiers, not translatable). The descriptions
@@ -123,6 +136,11 @@ export const settings = {
     get_capability_bundle: 'Single payload of every static capability — actions, vocab, presets, authoring contract.',
     validate_script: 'Validate a multi-step Action Script before sending it to the builder.',
     send_script_to_builder: 'Drop a validated Action Script into Dev Studio Builder for review.',
+    review_start: 'Start a code review of a GitHub PR or of the committed work on a local branch.',
+    review_status: 'Progress of a review: running, done or failed.',
+    review_get: 'Findings of a finished review, with draft GitHub comments.',
+    review_post: 'Post review comments the user approved to the PR (needs the posting key).',
+    review_list: 'Saved and in-progress PR reviews.',
   },
 
   // Network Inspector — status line

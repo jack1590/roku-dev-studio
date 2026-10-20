@@ -1858,6 +1858,196 @@ const BRIDGE_TOOLS: Tool[] = [
   }
 ];
 
+// PR reviews: the same review pipeline as Dev Studio's PR Reviews tab, for a GitHub PR or a
+// local branch. Main-process routes live in apps/roku-dev-studio/main/review/review-bridge.ts.
+const FINDING_SCHEMA = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    title: { type: 'string' },
+    detail: { type: 'string' },
+    status: { type: 'string', enum: ['issue', 'needs-device', 'noted', 'dismissed'] },
+    severity: { type: 'string', enum: ['info', 'minor', 'major', 'critical'] },
+    confidence: { type: 'number' },
+    file: { type: 'string' },
+    line: { type: 'number' },
+    endLine: { type: 'number' },
+    comment: { type: 'string' },
+    posted: { type: 'boolean' },
+    postedUrl: { type: 'string' },
+    postable: { type: 'boolean' }
+  },
+  required: ['id', 'title', 'status', 'severity', 'posted', 'postable'],
+  additionalProperties: false
+};
+const REVIEW_STATUS_SCHEMA = {
+  type: 'object',
+  properties: {
+    jobId: { type: 'string' },
+    status: { type: 'string', enum: ['queued', 'running', 'done', 'failed', 'cancelled'] },
+    phase: { type: 'string' },
+    detail: { type: 'string' },
+    error: { type: 'string' },
+    headSha: { type: 'string' },
+    counts: { type: 'object', additionalProperties: true },
+    finishedAt: { type: 'number' },
+    lostLenses: { type: 'array', items: { type: 'string' } }
+  },
+  required: ['jobId', 'status'],
+  additionalProperties: true
+};
+
+async function reviewBridgeTool(label: string, pathname: string, args: Record<string, unknown>, extra?: { headers?: Record<string, string>; timeoutMs?: number }): Promise<ToolResult> {
+  const res = await bridgeRequest({ method: 'POST', pathname, body: args, ...extra });
+  if (!res.ok) {
+    // Review errors are written for the agent (what to fix, what to call next): pass them through as they are.
+    return res.status >= 400 && res.status < 500 ? errorResult(`${label}: ${res.error}`, { httpStatus: res.status, bridgeError: res.error }) : bridgeToolFailure(label, res);
+  }
+  return jsonResult(res.body);
+}
+
+const REVIEW_TOOLS: Tool[] = [
+  {
+    name: 'review_start',
+    title: 'Start a code review',
+    description: [
+      'Start Dev Studio\'s multi-model code review of a GitHub PR (`repo` + `number`) or of the committed work on a local branch (`path`, optional `base`). Returns a `jobId` right away.',
+      'Local reviews read only committed work on the branch checked out at `path` (an absolute path; pass your working directory). The diff is from the merge-base with `base` (default: the repo\'s origin/HEAD, e.g. main; pass `base` for repos that integrate into develop or similar). No device step; never posted.',
+      'Reviews take several minutes. Call `review_status` with the `jobId` about every 30 s until `status` is `done` or `failed`; do not wait inside one call. Starting again while one runs returns the running job.',
+      'Reviewing the same PR or branch again re-checks the earlier findings (fixed or still open) and reviews only the new commits.',
+      'The project (tokens, models) is found from the repo; pass `projectId` when Dev Studio says the repo is in more than one project. Needs Roku Dev Studio running.'
+    ],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repo: { type: 'string', description: 'GitHub repo "owner/name" (PR review).' },
+        number: { type: 'number', description: 'PR number (PR review).' },
+        path: { type: 'string', description: 'Absolute path of a local git checkout (local branch review).' },
+        base: { type: 'string', description: 'Local review only: branch to diff against. Default: origin/HEAD.' },
+        projectId: { type: 'string', description: 'Dev Studio project id, when the repo is in more than one project.' }
+      },
+      oneOf: [{ required: ['repo', 'number'] }, { required: ['path'] }],
+      additionalProperties: false
+    },
+    outputSchema: {
+      type: 'object',
+      properties: { jobId: { type: 'string' }, status: REVIEW_STATUS_SCHEMA },
+      required: ['jobId', 'status'],
+      additionalProperties: false
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    handler: async (args) => reviewBridgeTool('review_start', '/review/start', args)
+  },
+  {
+    name: 'review_status',
+    title: 'Review progress',
+    description: [
+      'Progress of a review started with `review_start`: `status` (queued, running, done, failed, cancelled), `phase`/`detail` while running, `error` when failed, counts when done.',
+      'Poll about every 30 s. When `done`, call `review_get` for the findings.'
+    ],
+    inputSchema: {
+      type: 'object',
+      properties: { jobId: { type: 'string', description: 'From review_start or review_list.' } },
+      required: ['jobId'],
+      additionalProperties: false
+    },
+    outputSchema: REVIEW_STATUS_SCHEMA as ToolInputSchema,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    handler: async (args) => reviewBridgeTool('review_status', '/review/status', args)
+  },
+  {
+    name: 'review_get',
+    title: 'Review findings',
+    description: [
+      'The finished review: `summary`, `counts`, `headSha`, the JIRA ticket it was checked against, files skipped as too large or generated, lenses lost (an incomplete review), and `findings[]`.',
+      'Each finding has an `id`, `status` (issue = verified problem; needs-device = needs a device to confirm; noted = minor/hedged, below the counting floors; dismissed = judged not real), `severity`, `confidence` (0-1), `file`/`line`, `detail`, and `comment`: the draft GitHub comment exactly as it would post (including edits made in Dev Studio).',
+      '`postable` findings can be posted with `review_post` (PR reviews only). Show the user the findings and drafts and post only what they approve, passing this `headSha` and `finishedAt`.'
+    ],
+    inputSchema: {
+      type: 'object',
+      properties: { jobId: { type: 'string' } },
+      required: ['jobId'],
+      additionalProperties: false
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        jobId: { type: 'string' },
+        kind: { type: 'string', enum: ['pr', 'local'] },
+        repo: { type: 'string' },
+        number: { type: 'number' },
+        title: { type: 'string' },
+        url: { type: 'string' },
+        branch: { type: 'string' },
+        base: { type: 'string' },
+        headSha: { type: 'string' },
+        finishedAt: { type: 'number' },
+        summary: { type: 'string' },
+        counts: { type: 'object', additionalProperties: true },
+        lostLenses: { type: 'array', items: { type: 'string' } },
+        skippedFiles: { type: 'array', items: { type: 'string' } },
+        ticket: { type: 'string' },
+        incremental: { type: 'object', additionalProperties: true },
+        findings: { type: 'array', items: FINDING_SCHEMA }
+      },
+      required: ['jobId', 'kind', 'repo', 'headSha', 'finishedAt', 'summary', 'counts', 'findings'],
+      additionalProperties: false
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    handler: async (args) => reviewBridgeTool('review_get', '/review/get', args)
+  },
+  {
+    name: 'review_post',
+    title: 'Post approved review comments',
+    description: [
+      'Post chosen draft comments of a finished PR review to GitHub, as the project\'s GitHub token. Only post `ids` the user explicitly approved after seeing them; never on your own initiative.',
+      'Pass `headSha` and `finishedAt` from `review_get`: if the PR was re-reviewed since, nothing is posted and you must show the new review again. Takes finding ids only (no free text); local reviews and your own PRs are never posted. Comments already on GitHub are skipped.',
+      'Needs a posting key: the user sets one in Dev Studio → Settings → MCP Server and adds it to this client\'s MCP config as the `RDS_POST_KEY` environment variable. Without it the call is refused.'
+    ],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        jobId: { type: 'string' },
+        headSha: { type: 'string', description: 'headSha from review_get.' },
+        finishedAt: { type: 'number', description: 'finishedAt from review_get.' },
+        ids: { type: 'array', items: { type: 'string' }, description: 'Finding ids the user approved.' }
+      },
+      required: ['jobId', 'headSha', 'finishedAt', 'ids'],
+      additionalProperties: false
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        jobId: { type: 'string' },
+        results: { type: 'object', additionalProperties: { type: 'object', additionalProperties: true } }
+      },
+      required: ['jobId', 'results'],
+      additionalProperties: false
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    // Posting waits until every comment is sent (GitHub calls one after another): allow minutes, not the default 35 s.
+    handler: async (args) => reviewBridgeTool('review_post', '/review/post', args, { headers: { 'X-RDS-Post-Key': process.env.RDS_POST_KEY ?? '' }, timeoutMs: 10 * 60_000 })
+  },
+  {
+    name: 'review_list',
+    title: 'List PR reviews',
+    description: 'Saved and in-progress PR reviews (optionally of one `projectId`), each with its `jobId`, status, counts and how many drafted comments are posted. Local branch reviews are not listed.',
+    inputSchema: {
+      type: 'object',
+      properties: { projectId: { type: 'string' } },
+      additionalProperties: false
+    },
+    outputSchema: {
+      type: 'object',
+      properties: { reviews: { type: 'array', items: { type: 'object', additionalProperties: true } } },
+      required: ['reviews'],
+      additionalProperties: false
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    handler: async (args) => reviewBridgeTool('review_list', '/review/list', args)
+  }
+];
+
 // Public registry: bespoke + auto-generated, deduped by name.
 // Op-backed tools should win when there's overlap so new catalog additions
 // propagate automatically. In practice there's no overlap today.
@@ -1869,6 +2059,7 @@ registerTools(DISCOVERY_TOOLS);
 registerTools(BRIDGE_TOOLS);
 registerTools(NETWORK_INSPECTOR_TOOLS);
 registerTools(DEBUGGER_TOOLS);
+registerTools(REVIEW_TOOLS);
 registerTools(OP_BACKED_TOOLS);
 
 export const TOOLS: Tool[] = Array.from(byName.values());
@@ -1903,7 +2094,8 @@ export const TOOL_CATEGORY_GROUPS: Record<string, readonly string[]> = {
     'network_inspector_status', 'network_inspector_list_events', 'network_inspector_get_event_detail', 'network_inspector_find',
     'network_inspector_analyze', 'network_inspector_get_ca_info'
   ],
-  'Action Scripts': ['list_action_types', 'get_action_schema', 'get_capability_bundle', 'validate_script', 'send_script_to_builder']
+  'Action Scripts': ['list_action_types', 'get_action_schema', 'get_capability_bundle', 'validate_script', 'send_script_to_builder'],
+  'PR Reviews': ['review_start', 'review_status', 'review_get', 'review_post', 'review_list']
 };
 export const TOOL_CATEGORIES: Record<string, string> = {};
 for (const [category, names] of Object.entries(TOOL_CATEGORY_GROUPS)) {

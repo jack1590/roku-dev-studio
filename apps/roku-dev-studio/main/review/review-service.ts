@@ -60,7 +60,7 @@ export interface ReviewSummary {
   posting?: { posted: number; postable: number };
 }
 
-interface StoredReview {
+export interface StoredReview {
   version: 1;
   projectId: string;
   repo: string;
@@ -94,6 +94,11 @@ const queue: string[] = [];
 let running = 0;
 
 const jobKey = (projectId: string, repo: string, number: number) => `${projectId}|${repo}#${number}`;
+
+/** Where reviews keep clones, worktrees and results (under the app's userData). */
+export function reviewDataDir(): string {
+  return dataDir;
+}
 const IPV4 = /^(\d{1,3}\.){3}\d{1,3}$/;
 
 const poolPath = () => path.join(dataDir, 'devices.json');
@@ -225,7 +230,7 @@ export async function listPoolDevices(): Promise<{ key: string; ip: string; name
   return pool.map((d, i) => ({ key: d.key, ip: d.ip, name: d.name, model: d.model, online: online[i], hasPassword: !!passwords[d.key], busyWith: holderLabel(busy.get(d.key)) }));
 }
 
-function resultPath(projectId: string, repo: string, number: number): string {
+export function resultPath(projectId: string, repo: string, number: number): string {
   return path.join(dataDir, 'results', projectId.replace(/[^a-z0-9-]/gi, '_'), `${repo.replace('/', '__')}__${number}.json`);
 }
 
@@ -233,7 +238,7 @@ function shotsDir(projectId: string, repo: string, number: number): string {
   return resultPath(projectId, repo, number).replace(/\.json$/, '__shots');
 }
 
-function readStored(projectId: string, repo: string, number: number): StoredReview | null {
+export function readStored(projectId: string, repo: string, number: number): StoredReview | null {
   try {
     return JSON.parse(fs.readFileSync(resultPath(projectId, repo, number), 'utf-8')) as StoredReview;
   } catch {
@@ -368,22 +373,7 @@ async function execute(job: Job): Promise<void> {
   const prTests = prFiles.filter((f) => TEST_FILE.test(f));
   const dismissals = loadDismissals(job.repo);
 
-  let wikiBlock = '';
-  let wikiPages: string[] = [];
-  if (project.wikiEnabled !== false) {
-    const dir = resolveHomePath(project.wikiDir || '~/wiki');
-    if (fs.existsSync(dir)) {
-      const selection = selectWikiContext(await readWiki(dir), {
-        repo: job.repo,
-        companyTag: project.wikiCompanyTag || defaultCompanyTag(project.name),
-        tags: project.wikiTags ?? [],
-        keywords: keywordsFromFiles(changedFiles),
-        exclude: containsSecret,
-      });
-      wikiBlock = renderWikiPromptBlock(selection);
-      wikiPages = selection.excerpts.map((e) => e.slug);
-    }
-  }
+  const { wikiBlock, wikiPages } = await wikiContext(project, job.repo, changedFiles);
 
   const ctxFor = (diff: typeof full, since?: string) => ({
     repo: job.repo,
@@ -458,7 +448,22 @@ function saveResult(job: Job, pr: { title: string; html_url: string }, result: R
   update(job, { status: 'done', phase: undefined, detail: undefined, headSha: result.headSha, counts: result.counts, deviceRecommended: result.deviceRecommended, finishedAt: result.finishedAt, lostLenses: result.lostLenses, deviceSkipped: skippedReason(result), posting: postingCounts({ projectId: job.projectId, repo: job.repo, number: job.number, result }) });
 }
 
-type Project = NonNullable<ReturnType<typeof getProjectRecord>>;
+export type Project = NonNullable<ReturnType<typeof getProjectRecord>>;
+
+/** Team knowledge from the LLM Wiki for this repo and these files (empty when the wiki is off or missing). */
+export async function wikiContext(project: Project, repo: string, changedFiles: string[]): Promise<{ wikiBlock: string; wikiPages: string[] }> {
+  if (project.wikiEnabled === false) return { wikiBlock: '', wikiPages: [] };
+  const dir = resolveHomePath(project.wikiDir || '~/wiki');
+  if (!fs.existsSync(dir)) return { wikiBlock: '', wikiPages: [] };
+  const selection = selectWikiContext(await readWiki(dir), {
+    repo,
+    companyTag: project.wikiCompanyTag || defaultCompanyTag(project.name),
+    tags: project.wikiTags ?? [],
+    keywords: keywordsFromFiles(changedFiles),
+    exclude: containsSecret,
+  });
+  return { wikiBlock: renderWikiPromptBlock(selection), wikiPages: selection.excerpts.map((e) => e.slug) };
+}
 
 /** Run (or explain why not) the device verification on a free pool device. Mutates result findings/counts. */
 async function deviceStep(job: Job, project: Project, worktree: string, result: ReviewResult, ctx: Parameters<typeof runDeviceVerification>[0]['ctx'], cursorKey: string): Promise<DeviceReport> {
@@ -533,6 +538,53 @@ function pump(): void {
   }
 }
 
+/** Queue a PR review (or return the one already queued or running). Used by the PR list and the MCP bridge. */
+export function startReview(projectId: string, repo: string, number: number): { success: true; summary: ReviewSummary } | { success: false; error: string } {
+  if (!getProjectRecord(projectId) || !REPO_PATTERN.test(repo) || !Number.isInteger(number) || number <= 0) return { success: false, error: 'Invalid review request.' };
+  const key = jobKey(projectId, repo, number);
+  const existing = jobs.get(key);
+  if (existing && (existing.status === 'queued' || existing.status === 'running')) return { success: true, summary: publicSummary(existing) };
+  const job: Job = { projectId, repo, number, status: 'queued', controller: new AbortController() };
+  jobs.set(key, job);
+  queue.push(key);
+  broadcast(publicSummary(job));
+  pump();
+  return { success: true, summary: publicSummary(job) };
+}
+
+/** A PR review's state: the live job while it is not done, else the saved result's summary. */
+export function getReviewSummary(projectId: string, repo: string, number: number): ReviewSummary | null {
+  const job = jobs.get(jobKey(projectId, repo, number));
+  if (job && job.status !== 'done') return publicSummary(job);
+  const stored = readStored(projectId, repo, number);
+  return stored ? summaryOfStored(stored) : null;
+}
+
+/** Every saved or in-flight PR review of a project. */
+export function listReviews(projectId: string): ReviewSummary[] {
+  const out = new Map<string, ReviewSummary>();
+  const dir = path.join(dataDir, 'results', projectId.replace(/[^a-z0-9-]/gi, '_'));
+  try {
+    for (const name of fs.readdirSync(dir) as string[]) {
+      if (!name.endsWith('.json')) continue;
+      try {
+        const stored = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf-8')) as StoredReview;
+        out.set(`${stored.repo}#${stored.number}`, summaryOfStored(stored));
+      } catch {
+        // Skip a damaged result file.
+      }
+    }
+  } catch {
+    // No reviews yet for this project.
+  }
+  for (const job of jobs.values()) {
+    if (job.projectId !== projectId) continue;
+    // A finished in-memory job has already been written to disk; a failed or running one wins.
+    if (job.status !== 'done') out.set(`${job.repo}#${job.number}`, publicSummary(job));
+  }
+  return [...out.values()];
+}
+
 function setupReviewHandlers(app: App): void {
   const { ipcMain, BrowserWindow } = require('electron') as typeof import('electron');
   dataDir = path.join(app.getPath('userData'), 'review');
@@ -541,21 +593,9 @@ function setupReviewHandlers(app: App): void {
   setupDismissalHandlers({ dataDir, resultPath, readStored, onSaved: (stored) => broadcast(summaryOfStored(stored as StoredReview)) });
   const { verifyDeveloperDigestAuth } = require('roku-dev-studio-api') as { verifyDeveloperDigestAuth: (o: { ip: string; password: string }) => Promise<{ success: boolean; error?: string }> };
 
-  ipcMain.handle(IPC.ReviewsStart, async (_event: IpcMainInvokeEvent, payload?: { projectId?: unknown; repo?: unknown; number?: unknown }) => {
-    const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
-    const repo = typeof payload?.repo === 'string' ? payload.repo : '';
-    const number = typeof payload?.number === 'number' ? payload.number : NaN;
-    if (!getProjectRecord(projectId) || !REPO_PATTERN.test(repo) || !Number.isInteger(number) || number <= 0) return { success: false, error: 'Invalid review request.' };
-    const key = jobKey(projectId, repo, number);
-    const existing = jobs.get(key);
-    if (existing && (existing.status === 'queued' || existing.status === 'running')) return { success: true, summary: publicSummary(existing) };
-    const job: Job = { projectId, repo, number, status: 'queued', controller: new AbortController() };
-    jobs.set(key, job);
-    queue.push(key);
-    broadcast(publicSummary(job));
-    pump();
-    return { success: true, summary: publicSummary(job) };
-  });
+  ipcMain.handle(IPC.ReviewsStart, async (_event: IpcMainInvokeEvent, payload?: { projectId?: unknown; repo?: unknown; number?: unknown }) =>
+    startReview(typeof payload?.projectId === 'string' ? payload.projectId : '', typeof payload?.repo === 'string' ? payload.repo : '', typeof payload?.number === 'number' ? payload.number : NaN),
+  );
 
   ipcMain.handle(IPC.ReviewsCancel, async (_event: IpcMainInvokeEvent, payload?: { projectId?: unknown; repo?: unknown; number?: unknown }) => {
     const job = jobs.get(jobKey(String(payload?.projectId), String(payload?.repo), Number(payload?.number)));
@@ -565,30 +605,10 @@ function setupReviewHandlers(app: App): void {
     return { success: true };
   });
 
-  ipcMain.handle(IPC.ReviewsList, async (_event: IpcMainInvokeEvent, payload?: { projectId?: unknown }) => {
-    const projectId = typeof payload?.projectId === 'string' ? payload.projectId : '';
-    const out = new Map<string, ReviewSummary>();
-    const dir = path.join(dataDir, 'results', projectId.replace(/[^a-z0-9-]/gi, '_'));
-    try {
-      for (const name of fs.readdirSync(dir) as string[]) {
-        if (!name.endsWith('.json')) continue;
-        try {
-          const stored = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf-8')) as StoredReview;
-          out.set(`${stored.repo}#${stored.number}`, summaryOfStored(stored));
-        } catch {
-          // Skip a damaged result file.
-        }
-      }
-    } catch {
-      // No reviews yet for this project.
-    }
-    for (const job of jobs.values()) {
-      if (job.projectId !== projectId) continue;
-      // A finished in-memory job has already been written to disk; a failed or running one wins.
-      if (job.status !== 'done') out.set(`${job.repo}#${job.number}`, publicSummary(job));
-    }
-    return { success: true, reviews: [...out.values()] };
-  });
+  ipcMain.handle(IPC.ReviewsList, async (_event: IpcMainInvokeEvent, payload?: { projectId?: unknown }) => ({
+    success: true,
+    reviews: listReviews(typeof payload?.projectId === 'string' ? payload.projectId : ''),
+  }));
 
   ipcMain.handle(IPC.ReviewsGet, async (_event: IpcMainInvokeEvent, payload?: { projectId?: unknown; repo?: unknown; number?: unknown }) => {
     const stored = readStored(String(payload?.projectId), String(payload?.repo), Number(payload?.number));

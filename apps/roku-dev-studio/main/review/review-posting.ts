@@ -93,22 +93,29 @@ async function alreadyPosted(token: string, repo: string, number: number): Promi
   return ids;
 }
 
-export function setupPostingHandlers(deps: {
+type Deps = {
   resultPath: (projectId: string, repo: string, number: number) => string;
   readStored: (projectId: string, repo: string, number: number) => StoredReviewLike | null;
-}): void {
+};
+let deps: Deps | null = null;
+
+const statePath = (projectId: string, repo: string, number: number) => deps!.resultPath(projectId, repo, number).replace(/\.json$/, '__posting.json');
+/** Edits and posted marks of a review (empty when nothing is saved yet). */
+export function readPostingState(projectId: string, repo: string, number: number): PostingState {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(statePath(projectId, repo, number), 'utf-8')) as Partial<PostingState>;
+    return { edits: parsed.edits ?? {}, posted: parsed.posted ?? {} };
+  } catch {
+    return { edits: {}, posted: {} };
+  }
+}
+const readState = readPostingState;
+const writeState = (projectId: string, repo: string, number: number, state: PostingState) => fs.writeFileSync(statePath(projectId, repo, number), JSON.stringify(state, null, 2), 'utf-8');
+const keyOf = (projectId: string, repo: string, number: number) => `${projectId}|${repo}#${number}`;
+
+export function setupPostingHandlers(d: Deps): void {
+  deps = d;
   const { ipcMain } = require('electron') as typeof import('electron');
-  const statePath = (projectId: string, repo: string, number: number) => deps.resultPath(projectId, repo, number).replace(/\.json$/, '__posting.json');
-  const readState = (projectId: string, repo: string, number: number): PostingState => {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(statePath(projectId, repo, number), 'utf-8')) as Partial<PostingState>;
-      return { edits: parsed.edits ?? {}, posted: parsed.posted ?? {} };
-    } catch {
-      return { edits: {}, posted: {} };
-    }
-  };
-  const writeState = (projectId: string, repo: string, number: number, state: PostingState) => fs.writeFileSync(statePath(projectId, repo, number), JSON.stringify(state, null, 2), 'utf-8');
-  const keyOf = (projectId: string, repo: string, number: number) => `${projectId}|${repo}#${number}`;
 
   // The review drawer reads edits, posted marks and a running queue alongside the review.
   ipcMain.handle(IPC.ReviewsPostingState, async (_e: IpcMainInvokeEvent, p?: { projectId?: unknown; repo?: unknown; number?: unknown }) => {
@@ -118,7 +125,7 @@ export function setupPostingHandlers(deps: {
 
   ipcMain.handle(IPC.ReviewsSaveComment, async (_e: IpcMainInvokeEvent, p?: { projectId?: unknown; repo?: unknown; number?: unknown; id?: unknown; text?: unknown }) => {
     const projectId = String(p?.projectId), repo = String(p?.repo), number = Number(p?.number), id = String(p?.id ?? '');
-    if (!deps.readStored(projectId, repo, number) || !/^[\w-]{1,64}$/.test(id)) return { success: false, error: 'Review not found.' };
+    if (!deps!.readStored(projectId, repo, number) || !/^[\w-]{1,64}$/.test(id)) return { success: false, error: 'Review not found.' };
     const state = readState(projectId, repo, number);
     if (state.posted[id]) return { success: false, error: 'Already posted.' };
     if (typeof p?.text === 'string' && p.text.trim()) state.edits[id] = p.text.slice(0, 20_000);
@@ -127,121 +134,141 @@ export function setupPostingHandlers(deps: {
     return { success: true, state };
   });
 
-  ipcMain.handle(IPC.ReviewsPost, async (_e: IpcMainInvokeEvent, p?: { projectId?: unknown; repo?: unknown; number?: unknown; ids?: unknown; general?: unknown; spaced?: unknown; maxMinutes?: unknown }) => {
-    const projectId = String(p?.projectId), repo = String(p?.repo), number = Number(p?.number);
-    const stored = deps.readStored(projectId, repo, number);
-    if (!stored) return { success: false, error: 'Review not found.' };
-    const key = keyOf(projectId, repo, number);
-    if (runs.get(key)?.state === 'running') return { success: false, error: 'Already posting this review.' };
-    const token = tokenStore.getToken(projectId, 'github');
-    if (!token) return { success: false, error: 'Save a GitHub token for this project first.' };
-    // Never comment on your own PR: the token owner is the author.
-    const [me, pr] = await Promise.all([github(token, 'GET', '/user').catch(() => null), github(token, 'GET', `/repos/${repo}/pulls/${number}`).catch(() => null)]);
-    const login = ((me?.json as { login?: string }) ?? {}).login?.toLowerCase();
-    const author = ((pr?.json as { user?: { login?: string } }) ?? {}).user?.login?.toLowerCase();
-    if (!login || !author) return { success: false, error: 'Could not check who opened this PR on GitHub. Try again.' };
-    if (login === author) return { success: false, error: 'This is your own PR (the GitHub token belongs to its author), so comments are not posted. Use Copy fix prompt to work on the findings instead.' };
-    const general = typeof p?.general === 'string' && p.general.trim() ? p.general.slice(0, 20_000) : null;
-    // Post ids, not finding ids: a reply in a thread posts as "<id>-reply-<n>".
-    const requested = (Array.isArray(p?.ids) ? p!.ids : []).filter((id): id is string => typeof id === 'string');
-    const findingIds = requested.filter((id) => stored.result.findings.some((f) => (f.postId ?? f.id) === id));
-    if (findingIds.length < requested.length) return { success: false, error: 'Some chosen comments are no longer on this review. Reopen it and try again.' };
-    const maxMinutes = Math.max(0, Math.min(60, Number(p?.maxMinutes) || 0));
-    const spaced = p?.spaced === true && maxMinutes > 0;
+  ipcMain.handle(IPC.ReviewsPost, async (_e: IpcMainInvokeEvent, p?: PostRequest) => {
+    const started = await startPosting(p);
+    return started.success ? { success: true, run: started.run } : started;
+  });
+}
 
-    const state = readState(projectId, repo, number);
-    const onGitHub = await alreadyPosted(token, repo, number);
-    // Mark what is already on GitHub (e.g. posted from another machine) so it is not sent again.
-    for (const id of onGitHub) if (!state.posted[id]) state.posted[id] = { at: Date.now() };
-    writeState(projectId, repo, number, state);
-    const queue = [...(general ? [GENERAL_ID] : []), ...findingIds].filter((id) => !state.posted[id]);
-    if (!queue.length) return { success: false, error: 'Nothing new to post: the chosen comments are already on GitHub.' };
+export interface PostRequest {
+  projectId?: unknown;
+  repo?: unknown;
+  number?: unknown;
+  ids?: unknown;
+  general?: unknown;
+  spaced?: unknown;
+  maxMinutes?: unknown;
+}
 
-    const run: PostUpdate = { projectId, repo, number, state: 'running', queue: [...queue], posted: state.posted, errors: {} };
-    runs.set(key, run);
-    broadcast(run);
-    mainLog(`[reviews] posting ${queue.length} comment(s) to ${repo}#${number}${spaced ? `, one by one up to ${maxMinutes} min apart` : ''}`);
+/**
+ * Start posting chosen comments of a saved review. `done` resolves when the last one is sent (or
+ * failed). Used by the review drawer and the MCP bridge.
+ */
+export async function startPosting(p?: PostRequest): Promise<{ success: false; error: string } | { success: true; run: PostUpdate; done: Promise<PostUpdate> }> {
+  const projectId = String(p?.projectId), repo = String(p?.repo), number = Number(p?.number);
+  const stored = deps!.readStored(projectId, repo, number);
+  if (!stored) return { success: false, error: 'Review not found.' };
+  const key = keyOf(projectId, repo, number);
+  if (runs.get(key)?.state === 'running') return { success: false, error: 'Already posting this review.' };
+  const token = tokenStore.getToken(projectId, 'github');
+  if (!token) return { success: false, error: 'Save a GitHub token for this project first.' };
+  // Never comment on your own PR: the token owner is the author.
+  const [me, pr] = await Promise.all([github(token, 'GET', '/user').catch(() => null), github(token, 'GET', `/repos/${repo}/pulls/${number}`).catch(() => null)]);
+  const login = ((me?.json as { login?: string }) ?? {}).login?.toLowerCase();
+  const author = ((pr?.json as { user?: { login?: string } }) ?? {}).user?.login?.toLowerCase();
+  if (!login || !author) return { success: false, error: 'Could not check who opened this PR on GitHub. Try again.' };
+  if (login === author) return { success: false, error: 'This is your own PR (the GitHub token belongs to its author), so comments are not posted. Use Copy fix prompt to work on the findings instead.' };
+  const general = typeof p?.general === 'string' && p.general.trim() ? p.general.slice(0, 20_000) : null;
+  // Post ids, not finding ids: a reply in a thread posts as "<id>-reply-<n>".
+  const requested = (Array.isArray(p?.ids) ? p!.ids : []).filter((id): id is string => typeof id === 'string');
+  const findingIds = requested.filter((id) => stored.result.findings.some((f) => (f.postId ?? f.id) === id));
+  if (findingIds.length < requested.length) return { success: false, error: 'Some chosen comments are no longer on this review. Reopen it and try again.' };
+  const maxMinutes = Math.max(0, Math.min(60, Number(p?.maxMinutes) || 0));
+  const spaced = p?.spaced === true && maxMinutes > 0;
 
-    void (async () => {
-      for (let i = 0; i < queue.length; i++) {
-        const id = queue[i];
-        if (i > 0 && spaced) {
-          const wait = Math.round(Math.random() * maxMinutes * 60_000);
-          run.nextAt = Date.now() + wait;
-          broadcast(run);
-          await new Promise((r) => setTimeout(r, wait));
-          run.nextAt = undefined;
-        }
-        run.current = id;
-        run.queue = queue.slice(i + 1);
+  const state = readState(projectId, repo, number);
+  const onGitHub = await alreadyPosted(token, repo, number);
+  // Mark what is already on GitHub (e.g. posted from another machine) so it is not sent again.
+  for (const id of onGitHub) if (!state.posted[id]) state.posted[id] = { at: Date.now() };
+  writeState(projectId, repo, number, state);
+  const queue = [...(general ? [GENERAL_ID] : []), ...findingIds].filter((id) => !state.posted[id]);
+  if (!queue.length) return { success: false, error: 'Nothing new to post: the chosen comments are already on GitHub.' };
+
+  const run: PostUpdate = { projectId, repo, number, state: 'running', queue: [...queue], posted: state.posted, errors: {} };
+  runs.set(key, run);
+  broadcast(run);
+  mainLog(`[reviews] posting ${queue.length} comment(s) to ${repo}#${number}${spaced ? `, one by one up to ${maxMinutes} min apart` : ''}`);
+
+  const done = (async (): Promise<PostUpdate> => {
+    for (let i = 0; i < queue.length; i++) {
+      const id = queue[i];
+      if (i > 0 && spaced) {
+        const wait = Math.round(Math.random() * maxMinutes * 60_000);
+        run.nextAt = Date.now() + wait;
         broadcast(run);
-        try {
-          const fresh = readState(projectId, repo, number);
-          let url: string | undefined;
-          if (id === GENERAL_ID) {
-            const res = await github(token, 'POST', `/repos/${repo}/issues/${number}/comments`, { body: `${general}\n\n${marker(id)}` });
-            if (!res.ok) throw new Error(`GitHub returned HTTP ${res.status}.`);
-            url = (res.json as { html_url?: string })?.html_url;
-          } else {
-            const f = stored.result.findings.find((x) => (x.postId ?? x.id) === id)!;
-            const text = (fresh.edits[id] ?? f.comment ?? '').trim();
-            if (!text) throw new Error('This finding has no comment text.');
-            const body = `${text}\n\n${marker(id)}`;
-            let posted = false;
-            if (f.discussion?.replyTo) {
-              // Already discussed: answer in that thread.
-              const reply = await github(token, 'POST', `/repos/${repo}/pulls/${number}/comments/${f.discussion.replyTo}/replies`, { body });
-              if (reply.ok) {
-                url = (reply.json as { html_url?: string })?.html_url;
-              } else {
-                // GitHub can refuse a reply in the thread (e.g. an outdated one): post it as a PR comment pointing at it.
-                mainWarn(`[reviews] reply in thread ${f.discussion.replyTo} on ${repo}#${number} refused (HTTP ${reply.status}); posting as a PR comment`);
-                const to = f.discussion.lastAuthor ? `@${f.discussion.lastAuthor} ` : '';
-                const res = await github(token, 'POST', `/repos/${repo}/issues/${number}/comments`, { body: `${to}Re: [this thread](${f.discussion.url ?? ''})\n\n${body}` });
-                if (!res.ok) throw new Error(`GitHub returned HTTP ${reply.status} replying in the thread and ${res.status} as a PR comment.`);
-                url = (res.json as { html_url?: string })?.html_url;
-              }
-              posted = true;
-            } else if (f.file && f.line) {
-              const inline = await github(token, 'POST', `/repos/${repo}/pulls/${number}/comments`, {
-                body,
-                commit_id: stored.result.headSha,
-                path: f.file,
-                line: f.endLine && f.endLine > f.line ? f.endLine : f.line,
-                ...(f.endLine && f.endLine > f.line ? { start_line: f.line, start_side: 'RIGHT' } : {}),
-                side: 'RIGHT',
-              });
-              if (inline.ok) {
-                posted = true;
-                url = (inline.json as { html_url?: string })?.html_url;
-              } else if (inline.status !== 422) {
-                throw new Error(`GitHub returned HTTP ${inline.status}.`);
-              }
-            }
-            if (!posted) {
-              // GitHub cannot pin it to a changed line: post it as a plain PR comment, with its location.
-              const where = f.file ? `**\`${f.file}${f.line ? `:${f.line}` : ''}\`**\n\n` : '';
-              const res = await github(token, 'POST', `/repos/${repo}/issues/${number}/comments`, { body: `${where}${body}` });
-              if (!res.ok) throw new Error(`GitHub returned HTTP ${res.status}.`);
+        await new Promise((r) => setTimeout(r, wait));
+        run.nextAt = undefined;
+      }
+      run.current = id;
+      run.queue = queue.slice(i + 1);
+      broadcast(run);
+      try {
+        const fresh = readState(projectId, repo, number);
+        let url: string | undefined;
+        if (id === GENERAL_ID) {
+          const res = await github(token, 'POST', `/repos/${repo}/issues/${number}/comments`, { body: `${general}\n\n${marker(id)}` });
+          if (!res.ok) throw new Error(`GitHub returned HTTP ${res.status}.`);
+          url = (res.json as { html_url?: string })?.html_url;
+        } else {
+          const f = stored.result.findings.find((x) => (x.postId ?? x.id) === id)!;
+          const text = (fresh.edits[id] ?? f.comment ?? '').trim();
+          if (!text) throw new Error('This finding has no comment text.');
+          const body = `${text}\n\n${marker(id)}`;
+          let posted = false;
+          if (f.discussion?.replyTo) {
+            // Already discussed: answer in that thread.
+            const reply = await github(token, 'POST', `/repos/${repo}/pulls/${number}/comments/${f.discussion.replyTo}/replies`, { body });
+            if (reply.ok) {
+              url = (reply.json as { html_url?: string })?.html_url;
+            } else {
+              // GitHub can refuse a reply in the thread (e.g. an outdated one): post it as a PR comment pointing at it.
+              mainWarn(`[reviews] reply in thread ${f.discussion.replyTo} on ${repo}#${number} refused (HTTP ${reply.status}); posting as a PR comment`);
+              const to = f.discussion.lastAuthor ? `@${f.discussion.lastAuthor} ` : '';
+              const res = await github(token, 'POST', `/repos/${repo}/issues/${number}/comments`, { body: `${to}Re: [this thread](${f.discussion.url ?? ''})\n\n${body}` });
+              if (!res.ok) throw new Error(`GitHub returned HTTP ${reply.status} replying in the thread and ${res.status} as a PR comment.`);
               url = (res.json as { html_url?: string })?.html_url;
             }
+            posted = true;
+          } else if (f.file && f.line) {
+            const inline = await github(token, 'POST', `/repos/${repo}/pulls/${number}/comments`, {
+              body,
+              commit_id: stored.result.headSha,
+              path: f.file,
+              line: f.endLine && f.endLine > f.line ? f.endLine : f.line,
+              ...(f.endLine && f.endLine > f.line ? { start_line: f.line, start_side: 'RIGHT' } : {}),
+              side: 'RIGHT',
+            });
+            if (inline.ok) {
+              posted = true;
+              url = (inline.json as { html_url?: string })?.html_url;
+            } else if (inline.status !== 422) {
+              throw new Error(`GitHub returned HTTP ${inline.status}.`);
+            }
           }
-          fresh.posted[id] = { at: Date.now(), url };
-          writeState(projectId, repo, number, fresh);
-          run.posted = fresh.posted;
-        } catch (err) {
-          run.errors[id] = err instanceof Error ? err.message : String(err);
-          mainWarn(`[reviews] posting ${id} to ${repo}#${number} failed: ${run.errors[id]}`);
+          if (!posted) {
+            // GitHub cannot pin it to a changed line: post it as a plain PR comment, with its location.
+            const where = f.file ? `**\`${f.file}${f.line ? `:${f.line}` : ''}\`**\n\n` : '';
+            const res = await github(token, 'POST', `/repos/${repo}/issues/${number}/comments`, { body: `${where}${body}` });
+            if (!res.ok) throw new Error(`GitHub returned HTTP ${res.status}.`);
+            url = (res.json as { html_url?: string })?.html_url;
+          }
         }
-        // Done with this one: the bar shows "waiting", not "posting", until the next goes out.
-        run.current = undefined;
-        broadcast(run);
+        fresh.posted[id] = { at: Date.now(), url };
+        writeState(projectId, repo, number, fresh);
+        run.posted = fresh.posted;
+      } catch (err) {
+        run.errors[id] = err instanceof Error ? err.message : String(err);
+        mainWarn(`[reviews] posting ${id} to ${repo}#${number} failed: ${run.errors[id]}`);
       }
+      // Done with this one: the bar shows "waiting", not "posting", until the next goes out.
       run.current = undefined;
-      run.queue = [];
-      run.state = Object.keys(run.errors).length ? 'failed' : 'done';
       broadcast(run);
-    })();
-    return { success: true, run };
-  });
+    }
+    run.current = undefined;
+    run.queue = [];
+    run.state = Object.keys(run.errors).length ? 'failed' : 'done';
+    broadcast(run);
+    return run;
+  })();
+  return { success: true, run, done };
 }

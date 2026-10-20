@@ -8,6 +8,14 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.6.0]
+
+### Added
+- **Code reviews from any AI agent (MCP).** Five new tools in the bundled MCP server let Claude Code, Cursor, openclaw or any MCP client run Dev Studio's review: `review_start`, `review_status`, `review_get`, `review_post`, `review_list`. Needs Dev Studio open.
+- **Review a local branch before it is a PR.** `review_start` with `path` reviews the committed work on the checked-out branch against its base (origin/HEAD by default, or `base`, e.g. `develop`). Uncommitted edits are left out, no device step, never posted. Reviewing the branch again re-checks the earlier findings and reviews only the new commits.
+- **Post approved comments from an agent.** `review_get` returns each finding's draft comment exactly as it would post; `review_post` posts only the finding ids you approve, and refuses if the PR was re-reviewed since you read it.
+- **Posting key** (Settings → MCP Server). `review_post` needs it as `RDS_POST_KEY` in the client's MCP config, so only the clients you choose can post. Without a key, agents can review but not post.
+
 ## [1.5.2]
 
 ### Added
@@ -239,7 +247,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.9...v1.5.0

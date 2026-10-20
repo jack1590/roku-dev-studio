@@ -1,6 +1,6 @@
 {
   "name": "roku-dev-studio",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "description": "Roku Dev Studio - Control your Roku device over the local network",
   "homepage": "https://github.com/jack1590/roku-dev-studio",
   "main": "main.bundled.cjs",
@@ -31,6 +31,7 @@
     "verify:project-config": "tsx scripts/verify-project-config.ts",
     "verify:packager": "tsx scripts/verify-packager.ts",
     "verify:device-claims": "tsx scripts/verify-device-claims.ts",
+    "verify:review-mcp": "tsx scripts/verify-review-mcp.ts",
     "verify:packager-runner": "tsx scripts/verify-packager-runner.ts",
     "verify:updater-errors": "tsx scripts/verify-updater-errors.ts",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",

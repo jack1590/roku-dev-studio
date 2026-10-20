@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('settingsApi', {
   save: (payload: unknown) => ipcRenderer.invoke(IPC.SettingsWindowSave, payload),
   pickFolder: () => ipcRenderer.invoke(IPC.SettingsWindowPickFolder),
   openMcpConfig: (id: string) => ipcRenderer.invoke(IPC.SettingsWindowOpenMcpConfig, { id }),
+  // Posting key for the MCP review tools: 'status' | 'generate' | 'clear'. The key comes back only on generate.
+  mcpPostKey: (action: string) => ipcRenderer.invoke(IPC.SettingsWindowMcpPostKey, { action }),
   closeWindow: () => ipcRenderer.send(IPC.SettingsWindowClose),
   // "Demo App" button shown next to the "Show Try Demo App Button" toggle when it's off — asks
   // main to bring the main window forward and open the same picker modal there.

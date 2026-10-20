@@ -7,6 +7,7 @@
  */
 
 import { execFile } from 'child_process';
+import { createHash } from 'crypto';
 import { promises as fs, existsSync } from 'fs';
 import * as path from 'path';
 
@@ -35,15 +36,17 @@ function withRepoLock<T>(repo: string, work: () => Promise<T>): Promise<T> {
   return next;
 }
 
-function git(args: string[], opts: { cwd?: string; token: string; signal?: AbortSignal }): Promise<string> {
-  const auth = Buffer.from(`x-access-token:${opts.token}`).toString('base64');
-  const env = {
-    ...process.env,
-    GIT_TERMINAL_PROMPT: '0',
-    GIT_CONFIG_COUNT: '1',
-    GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
-    GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${auth}`,
-  };
+function git(args: string[], opts: { cwd?: string; token?: string; signal?: AbortSignal }): Promise<string> {
+  // No token (a local checkout): plain git, no auth header.
+  const env = opts.token
+    ? {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: '0',
+        GIT_CONFIG_COUNT: '1',
+        GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+        GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${opts.token}`).toString('base64')}`,
+      }
+    : { ...process.env, GIT_TERMINAL_PROMPT: '0' };
   return new Promise((resolve, reject) => {
     execFile('git', args, { cwd: opts.cwd, env, signal: opts.signal, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) {
@@ -117,6 +120,89 @@ export async function prepareCheckout(input: {
     }
     return { worktree, headSha, baseRef, diff, sinceDiff };
   });
+}
+
+export interface LocalCheckout extends Checkout {
+  branch: string;
+  originUrl: string;
+  /** `git config user.name`, or "local". */
+  author: string;
+}
+
+const validRef = (ref: string) => REF_PATTERN.test(ref) && !ref.startsWith('-') && !ref.includes('..');
+
+/**
+ * Checks out the committed work of a local branch for review. Only reads the user's repo (never
+ * fetches, never adds refs or worktrees there): the review copy is a `--shared` clone at HEAD under
+ * `dataDir`, so uncommitted edits stay out and the user can keep working. The diff is
+ * `merge-base(base, HEAD)..HEAD`; base defaults to `origin/HEAD`.
+ */
+export async function prepareLocalCheckout(input: { path: string; base?: string; dataDir: string; signal?: AbortSignal; sinceSha?: string }): Promise<LocalCheckout> {
+  const { dataDir, signal, sinceSha } = input;
+  const run = (args: string[], cwd: string) => git(args, { cwd, signal }).then((out) => out.trim());
+  const top = await run(['rev-parse', '--show-toplevel'], input.path).catch(() => {
+    throw new Error(`${input.path} is not a git checkout.`);
+  });
+  const originUrl = await run(['remote', 'get-url', 'origin'], top).catch(() => {
+    throw new Error('This checkout has no origin remote.');
+  });
+  const branch = await run(['symbolic-ref', '--short', 'HEAD'], top).catch(() => {
+    throw new Error('HEAD is detached. Check out a branch first.');
+  });
+  const author = (await run(['config', 'user.name'], top).catch(() => '')) || 'local';
+
+  let baseRef: string;
+  let baseFull: string;
+  if (input.base) {
+    if (!validRef(input.base)) throw new Error('Invalid base branch name.');
+    baseRef = input.base;
+    const candidates = [`refs/remotes/origin/${baseRef}`, `refs/heads/${baseRef}`];
+    let found: string | undefined;
+    for (const ref of candidates) {
+      if (await run(['rev-parse', '--verify', '--quiet', ref], top).then(() => true, () => false)) {
+        found = ref;
+        break;
+      }
+    }
+    if (!found) throw new Error(`Base branch "${baseRef}" not found locally or on origin.`);
+    baseFull = found;
+  } else {
+    const head = await run(['symbolic-ref', 'refs/remotes/origin/HEAD'], top).catch(() => {
+      throw new Error('Could not tell the base branch (origin/HEAD is not set). Pass base, e.g. "develop".');
+    });
+    baseFull = head;
+    baseRef = head.replace(/^refs\/remotes\/origin\//, '');
+  }
+
+  const headSha = await run(['rev-parse', 'HEAD'], top);
+  const mergeBase = await run(['merge-base', baseFull, headSha], top);
+  if (mergeBase === headSha) throw new Error(`Nothing to review: no commits on ${branch} since ${baseRef}.`);
+  const diff = await git(['diff', '--no-color', '--find-renames', mergeBase, headSha], { cwd: top, signal });
+
+  let sinceDiff: string | undefined;
+  if (sinceSha && /^[0-9a-f]{40}$/.test(sinceSha) && sinceSha !== headSha) {
+    const ancestor = await run(['merge-base', '--is-ancestor', sinceSha, headSha], top).then(() => true, () => false);
+    if (ancestor) {
+      const files = (await run(['diff', '--name-only', mergeBase, headSha], top)).split('\n').filter(Boolean);
+      sinceDiff = files.length ? await git(['diff', '--no-color', '--find-renames', sinceSha, headSha, '--', ...files], { cwd: top, signal }) : '';
+    }
+  }
+
+  // Folder name plus a short hash of the path: two checkouts with the same folder name never share a copy.
+  const name = `${path.basename(top).replace(/[^A-Za-z0-9_.-]/g, '_')}-${createHash('sha1').update(top).digest('hex').slice(0, 8)}`;
+  const worktree = path.join(dataDir, 'local', `${name}__${branch.replace(/[^A-Za-z0-9_.-]/g, '_')}`);
+  await fs.rm(worktree, { recursive: true, force: true });
+  await fs.mkdir(path.dirname(worktree), { recursive: true });
+  await git(['clone', '--quiet', '--shared', '--no-checkout', top, worktree], { signal });
+  await git(['checkout', '--quiet', '--detach', headSha], { cwd: worktree, signal });
+  await fs.mkdir(path.join(worktree, REVIEW_DIR), { recursive: true });
+  await fs.writeFile(path.join(worktree, REVIEW_DIR, 'pr.diff'), diff, 'utf-8');
+  return { worktree, headSha, baseRef, diff, sinceDiff, branch, originUrl, author };
+}
+
+/** Removes a local review copy; errors are ignored. */
+export async function removeLocalCheckout(worktree: string): Promise<void> {
+  await fs.rm(worktree, { recursive: true, force: true }).catch(() => undefined);
 }
 
 export interface StandardsFile {

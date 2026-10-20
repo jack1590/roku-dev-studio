@@ -51,6 +51,18 @@ export const settings = {
   mcpInstallToEnable: (label: string): string => `Zainstaluj ${label}, aby włączyć.`,
   mcpEnableAria: (label: string): string => `Włącz MCP dla ${label}`,
   mcpToolsButton: 'Zobacz narzędzia MCP',
+  mcpPostKeyTitle: "Klucz publikowania",
+  mcpPostKeyBlurb: "Agenci mogą przeglądać PR-y bez niego. Aby publikować komentarze z przeglądu na GitHubie, klient MCP potrzebuje tego klucza jako RDS_POST_KEY w swojej konfiguracji. Publikować mogą tylko klienci, którym go przekażesz.",
+  mcpPostKeyOn: "Ustawiony. Klienci z RDS_POST_KEY mogą publikować komentarze z przeglądu.",
+  mcpPostKeyOff: "Nie ustawiono. Agenci nie mogą publikować komentarzy z przeglądu.",
+  mcpPostKeyGenerate: "Generuj",
+  mcpPostKeyRotate: "Zmień",
+  mcpPostKeyClear: "Wyczyść",
+  mcpPostKeyCopy: "Kopiuj",
+  mcpPostKeyCopied: "Skopiowano",
+  mcpPostKeyRotateConfirm: "Zmienić klucz publikowania? Klienci używający starego klucza nie będą mogli publikować.",
+  mcpPostKeyClearConfirm: "Wyczyścić klucz publikowania? Żaden agent nie będzie mógł publikować komentarzy z przeglądu.",
+  mcpPostKeyHint: "Wyświetlany tylko raz. Dodaj go do konfiguracji MCP klienta: \"env\": { \"RDS_POST_KEY\": \"<klucz>\" }",
   mcpToolsModalTitle: 'Narzędzia MCP',
   mcpToolsModalAria: 'Narzędzia MCP udostępnione agentom AI',
   mcpToolsIntro: (count: number): string =>
@@ -64,6 +76,7 @@ export const settings = {
     debugger: 'Debugger',
     networkInspector: 'Inspektor sieci',
     actionScripts: 'Skrypty akcji',
+    reviews: 'Przeglądy PR',
   },
   mcpToolDescriptions: {
     probe_bridge: 'Sprawdź, czy sam Roku Dev Studio jest uruchomiony i dostępny.',
@@ -117,6 +130,11 @@ export const settings = {
     get_capability_bundle: 'Jeden pakiet ze wszystkimi statycznymi możliwościami — akcje, słownik, ustawienia domyślne, kontrakt autorski.',
     validate_script: 'Zweryfikuj wieloetapowy Action Script przed wysłaniem go do buildera.',
     send_script_to_builder: 'Wyślij zweryfikowany Action Script do Dev Studio Buildera do przeglądu.',
+    review_start: 'Rozpocznij przegląd kodu PR-a z GitHuba lub zatwierdzonych zmian lokalnej gałęzi.',
+    review_status: 'Postęp przeglądu: w toku, zakończony lub nieudany.',
+    review_get: 'Wyniki zakończonego przeglądu z projektami komentarzy na GitHubie.',
+    review_post: 'Opublikuj w PR-ze komentarze z przeglądu zatwierdzone przez użytkownika (wymaga klucza publikowania).',
+    review_list: 'Zapisane i trwające przeglądy PR.',
   },
 
   // Network Inspector — status line

@@ -14,8 +14,10 @@ import { applyDismissals, dismissalPromptBlock, matchDismissal, type Dismissal }
 import type { ReviewFinding } from './review';
 import { discussionPromptBlock, toThreads } from './discussion';
 import { clipDescription } from './prompts';
+import { prepareLocalCheckout, removeLocalCheckout } from './git';
+import { execFileSync } from 'node:child_process';
 import { ciFindings, ciInfraFailures, ciPromptBlock, isCodeAnnotation } from './ci';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -226,4 +228,62 @@ async function deviceChecks(): Promise<void> {
   assert.ok(clipped.length < 16_200 && clipped.includes('characters of the description cut here'));
 }
 
-void buildChecks().then(deviceChecks).then(() => console.log('verify-review: ok'));
+/** Local branch checkout: committed work only, base from origin/HEAD, incremental diff, clear errors. */
+async function localCheckoutChecks(): Promise<void> {
+  const root = mkdtempSync(join(tmpdir(), 'rds-local-'));
+  const g = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  const commit = (cwd: string, file: string, text: string) => {
+    writeFileSync(join(cwd, file), text);
+    g(cwd, 'add', file);
+    g(cwd, '-c', 'user.name=T', '-c', 'user.email=t@t', 'commit', '-qm', file);
+  };
+  try {
+    const origin = join(root, 'origin.git');
+    g(root, 'init', '-q', '--bare', '-b', 'main', origin);
+    const work = join(root, 'work');
+    g(root, 'clone', '-q', origin, work);
+    g(work, 'checkout', '-q', '-b', 'main');
+    commit(work, 'a.brs', 'sub a()\nend sub\n');
+    g(work, 'push', '-q', 'origin', 'main');
+    g(work, 'remote', 'set-head', 'origin', 'main');
+    g(work, 'checkout', '-q', '-b', 'feat/x');
+    commit(work, 'b.brs', 'sub b()\nend sub\n');
+    writeFileSync(join(work, 'b.brs'), 'UNCOMMITTED\n');
+    const dataDir = join(root, 'data');
+
+    const co = await prepareLocalCheckout({ path: work, dataDir });
+    assert.equal(co.branch, 'feat/x');
+    assert.equal(co.baseRef, 'main');
+    assert.match(co.diff, /b\.brs/);
+    assert.doesNotMatch(co.diff, /a\.brs/);
+    assert.doesNotMatch(co.diff, /UNCOMMITTED/, 'uncommitted edits are not reviewed');
+    assert.equal(readFileSync(join(co.worktree, 'b.brs'), 'utf-8').includes('UNCOMMITTED'), false);
+    assert.equal(g(work, 'worktree', 'list').split('\n').length, 1, 'the user repo gets no worktree');
+
+    g(work, 'checkout', '-q', '--', 'b.brs');
+    commit(work, 'c.brs', 'sub second()\nend sub\n');
+    const co2 = await prepareLocalCheckout({ path: work, dataDir, sinceSha: co.headSha });
+    assert.ok(co2.sinceDiff !== undefined && /c\.brs/.test(co2.sinceDiff) && !/b\.brs/.test(co2.sinceDiff));
+    assert.equal((await prepareLocalCheckout({ path: work, base: 'main', dataDir })).baseRef, 'main');
+    await removeLocalCheckout(co2.worktree);
+    assert.equal(existsSync(co2.worktree), false);
+
+    const notRepo = join(root, 'plain');
+    mkdirSync(notRepo);
+    await assert.rejects(prepareLocalCheckout({ path: notRepo, dataDir }), /not a git checkout/);
+    await assert.rejects(prepareLocalCheckout({ path: work, base: 'nope', dataDir }), /"nope" not found/);
+    g(work, 'checkout', '-q', '--detach');
+    await assert.rejects(prepareLocalCheckout({ path: work, dataDir }), /Check out a branch first/);
+    g(work, 'checkout', '-q', 'main');
+    await assert.rejects(prepareLocalCheckout({ path: work, dataDir }), /Nothing to review/);
+    g(work, 'checkout', '-q', 'feat/x');
+    g(work, 'remote', 'set-head', 'origin', '-d');
+    await assert.rejects(prepareLocalCheckout({ path: work, dataDir }), /Pass base/);
+    g(work, 'remote', 'remove', 'origin');
+    await assert.rejects(prepareLocalCheckout({ path: work, base: 'main', dataDir }), /no origin remote/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+void buildChecks().then(deviceChecks).then(localCheckoutChecks).then(() => console.log('verify-review: ok'));

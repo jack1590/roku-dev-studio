@@ -27,8 +27,10 @@
  *     malicious page on a domain that briefly resolves to 127.0.0.1 reaches
  *     the socket but carries the attacker's domain in `Host` / `Origin` and
  *     is rejected before the bearer check.
- *   - Read-only by design. The only "write" is `send_script_to_builder` which
- *     opens a modal; the human still presses Run.
+ *   - Read-only by design, with two exceptions: `send_script_to_builder`
+ *     opens a modal (the human still presses Run), and `/review/post` posts
+ *     approved review comments to GitHub. That one also needs the posting key
+ *     (`X-RDS-Post-Key`, see mcp-post-key.ts) and takes finding ids only.
  *   - For password-bearing ops, an omitted `password` is filled from the same
  *     per-serial localStorage the device panel uses (Remember); only the active
  *     renderer receives the lookup — never written to disk by the bridge.
@@ -982,6 +984,12 @@ function seedAuditFromPath(audit: AuditDraft, method: string, pathname: string):
     audit.destructive = true;
     return;
   }
+  if (pathname.startsWith('/review/')) {
+    audit.enabled = true;
+    audit.op = `review_${pathname.slice('/review/'.length)}`;
+    audit.destructive = pathname === '/review/post';
+    return;
+  }
   if (pathname === '/connect-device') {
     audit.enabled = true;
     audit.op = 'connect_device';
@@ -1356,6 +1364,21 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       paramsHash: audit.params != null ? hashParamsForAudit(audit.params) : undefined
     });
   });
+
+  // PR / local-branch reviews (main/review/review-bridge.ts). Required lazily: the review service imports this module.
+  if (method === 'POST' && pathname.startsWith('/review/')) {
+    const body = await readJsonLoose(req);
+    if (!send400IfJsonErr(res, body)) return;
+    audit.params = body; // the posting key travels in a header, never in the body
+    const header = req.headers['x-rds-post-key'];
+    try {
+      const { reviewRoute } = require('./review/review-bridge') as typeof import('./review/review-bridge');
+      const out = await reviewRoute(pathname, body, typeof header === 'string' ? header : undefined);
+      if (out) return void sendJson(res, out.status, out.body);
+    } catch (e) {
+      return void sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
+    }
+  }
 
   if (method === 'GET' && pathname === '/selected-device') {
     if (!state.selectedDevice) {

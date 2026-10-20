@@ -51,6 +51,18 @@ export const settings = {
   mcpInstallToEnable: (label: string): string => `Встановіть ${label}, щоб увімкнути.`,
   mcpEnableAria: (label: string): string => `Увімкнути MCP для ${label}`,
   mcpToolsButton: 'Переглянути інструменти MCP',
+  mcpPostKeyTitle: "Ключ публікації",
+  mcpPostKeyBlurb: "Агенти можуть переглядати PR без нього. Щоб публікувати коментарі рев'ю на GitHub, MCP-клієнту потрібен цей ключ як RDS_POST_KEY у його конфігурації. Публікувати можуть лише клієнти, яким ви його дали.",
+  mcpPostKeyOn: "Встановлено. Клієнти з RDS_POST_KEY можуть публікувати коментарі рев'ю.",
+  mcpPostKeyOff: "Не встановлено. Агенти не можуть публікувати коментарі рев'ю.",
+  mcpPostKeyGenerate: "Згенерувати",
+  mcpPostKeyRotate: "Змінити",
+  mcpPostKeyClear: "Очистити",
+  mcpPostKeyCopy: "Копіювати",
+  mcpPostKeyCopied: "Скопійовано",
+  mcpPostKeyRotateConfirm: "Змінити ключ публікації? Клієнти зі старим ключем більше не зможуть публікувати.",
+  mcpPostKeyClearConfirm: "Очистити ключ публікації? Жоден агент не зможе публікувати коментарі рев'ю.",
+  mcpPostKeyHint: "Показується лише раз. Додайте його до MCP-конфігурації клієнта: \"env\": { \"RDS_POST_KEY\": \"<ключ>\" }",
   mcpToolsModalTitle: 'Інструменти MCP',
   mcpToolsModalAria: 'Інструменти MCP, доступні AI-агентам',
   mcpToolsIntro: (count: number): string =>
@@ -64,6 +76,7 @@ export const settings = {
     debugger: 'Дебагер',
     networkInspector: 'Інспектор мережі',
     actionScripts: 'Скрипти дій',
+    reviews: 'Рев’ю PR',
   },
   mcpToolDescriptions: {
     probe_bridge: 'Перевірити, чи запущений і доступний сам Roku Dev Studio.',
@@ -117,6 +130,11 @@ export const settings = {
     get_capability_bundle: 'Єдиний пакет усіх статичних можливостей — дії, словник, шаблони, контракт авторства.',
     validate_script: 'Перевірити багатокроковий Action Script перед надсиланням у builder.',
     send_script_to_builder: 'Надіслати перевірений Action Script у Dev Studio Builder для перегляду.',
+    review_start: 'Почати рев’ю коду PR з GitHub або закомічених змін локальної гілки.',
+    review_status: 'Хід рев’ю: триває, завершено чи з помилкою.',
+    review_get: 'Знахідки завершеного рев’ю з чернетками коментарів для GitHub.',
+    review_post: 'Опублікувати в PR коментарі рев’ю, схвалені користувачем (потрібен ключ публікації).',
+    review_list: 'Збережені та поточні рев’ю PR.',
   },
 
   // Network Inspector — status line

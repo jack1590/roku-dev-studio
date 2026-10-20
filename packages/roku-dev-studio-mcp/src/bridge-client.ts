@@ -131,6 +131,10 @@ export type BridgeRequest = {
   method: 'GET' | 'POST';
   pathname: string;
   body?: unknown;
+  /** Extra request headers (e.g. the review posting key). */
+  headers?: Record<string, string>;
+  /** Overrides REQUEST_TIMEOUT_MS for a call that legitimately runs longer (posting many review comments). */
+  timeoutMs?: number;
 };
 
 export type BridgeResponse<T = unknown> =
@@ -147,7 +151,8 @@ export async function bridgeRequest<T = unknown>(req: BridgeRequest): Promise<Br
     const bodyStr = req.body == null ? undefined : JSON.stringify(req.body);
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${descriptor.token}`,
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      ...req.headers
     };
     if (bodyStr != null) {
       headers['Content-Type'] = 'application/json';
@@ -160,7 +165,7 @@ export async function bridgeRequest<T = unknown>(req: BridgeRequest): Promise<Br
         method: req.method,
         path: req.pathname,
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: req.timeoutMs ?? REQUEST_TIMEOUT_MS
       },
       (res) => {
         const chunks: Buffer[] = [];

@@ -51,6 +51,18 @@ export const settings = {
   mcpInstallToEnable: (label: string): string => `Instale ${label} para ativar.`,
   mcpEnableAria: (label: string): string => `Ativar MCP para ${label}`,
   mcpToolsButton: 'Ver ferramentas MCP',
+  mcpPostKeyTitle: "Chave de publicação",
+  mcpPostKeyBlurb: "Os agentes podem revisar PRs sem ela. Para publicar comentários de revisão no GitHub, um cliente MCP precisa desta chave como RDS_POST_KEY na configuração. Só os clientes a quem você a der podem publicar.",
+  mcpPostKeyOn: "Definida. Clientes com RDS_POST_KEY podem publicar comentários de revisão.",
+  mcpPostKeyOff: "Não definida. Os agentes não podem publicar comentários de revisão.",
+  mcpPostKeyGenerate: "Gerar",
+  mcpPostKeyRotate: "Trocar",
+  mcpPostKeyClear: "Limpar",
+  mcpPostKeyCopy: "Copiar",
+  mcpPostKeyCopied: "Copiado",
+  mcpPostKeyRotateConfirm: "Trocar a chave de publicação? Clientes que usam a chave antiga não poderão mais publicar.",
+  mcpPostKeyClearConfirm: "Limpar a chave de publicação? Nenhum agente poderá publicar comentários de revisão.",
+  mcpPostKeyHint: "Mostrada só uma vez. Adicione-a à configuração MCP de um cliente: \"env\": { \"RDS_POST_KEY\": \"<chave>\" }",
   mcpToolsModalTitle: 'Ferramentas MCP',
   mcpToolsModalAria: 'Ferramentas MCP expostas a agentes de IA',
   mcpToolsIntro: (count: number): string =>
@@ -64,6 +76,7 @@ export const settings = {
     debugger: 'Depurador',
     networkInspector: 'Inspetor de rede',
     actionScripts: 'Scripts de ação',
+    reviews: 'Revisões de PR',
   },
   mcpToolDescriptions: {
     probe_bridge: 'Verificar se o próprio Roku Dev Studio está em execução e acessível.',
@@ -117,6 +130,11 @@ export const settings = {
     get_capability_bundle: 'Um único payload com todas as capacidades estáticas — ações, vocabulário, predefinições, contrato de criação.',
     validate_script: 'Validar um Action Script de múltiplas etapas antes de enviá-lo ao builder.',
     send_script_to_builder: 'Enviar um Action Script validado para o Dev Studio Builder para revisão.',
+    review_start: 'Iniciar uma revisão de código de um PR do GitHub ou do trabalho confirmado de um branch local.',
+    review_status: 'Progresso de uma revisão: em andamento, concluída ou com falha.',
+    review_get: 'Achados de uma revisão concluída, com rascunhos de comentários para o GitHub.',
+    review_post: 'Publicar no PR os comentários de revisão que o usuário aprovou (requer a chave de publicação).',
+    review_list: 'Revisões de PR salvas e em andamento.',
   },
 
   // Network Inspector — status line
