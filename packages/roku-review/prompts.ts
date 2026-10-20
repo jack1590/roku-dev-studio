@@ -94,7 +94,7 @@ export function clipDescription(body: string): string {
 function prBlock(ctx: PromptContext): string {
   const body = ctx.body.trim() ? clipDescription(ctx.body.trim()) : '(no description)';
   return `Repository: ${ctx.repo}
-Pull request #${ctx.prNumber} by ${ctx.author}: ${ctx.title}
+${ctx.prNumber ? `Pull request #${ctx.prNumber} by ${ctx.author}: ${ctx.title}` : `Local branch ${ctx.headRef} by ${ctx.author} (no pull request yet)`}
 Branch: ${ctx.headRef} → ${ctx.baseRef}
 
 PR description:
