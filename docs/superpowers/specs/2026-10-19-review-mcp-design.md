@@ -50,7 +50,7 @@ Two use cases drive it:
 | `review_start` | either `{ repo, number }` or `{ path, base? }`, plus optional `projectId` | `{ jobId }` immediately (reviews take minutes) |
 | `review_status` | `{ jobId }` | phase/progress; when done, a short summary (counts by status/severity) |
 | `review_get` | `{ jobId }` | full findings: id, title, status, severity, confidence, file, line, suggested fix, draft comment text, already-posted flag; plus lost lenses, skipped files, ticket used |
-| `review_post` | `{ jobId, headSha, ids: string[] }` | per-id result (posted url / error / already posted) |
+| `review_post` | `{ jobId, headSha, finishedAt, ids: string[] }` | per-id result (posted url / error / already posted) |
 | `review_list` (optional) | `{ projectId? }` | recent reviews, so an agent can find one it didn't start |
 
 `jobId` is opaque to the agent. For PR reviews it maps to the existing `projectId + repo + number` key, so a review started from the UI is also reachable.
@@ -100,7 +100,7 @@ The project supplies GitHub/Cursor/JIRA tokens and model choices, as today.
 Approval must cover the exact text the user saw (designer's call):
 
 - `review_get` returns each finding's *effective* comment text: the UI's saved edit (`state.edits[id]`) if one exists, else the AI's comment. That is the text that will post.
-- `review_get` returns the review's `headSha`; `review_post` requires it and refuses when the stored review's `headSha` differs (a re-review happened since the user approved).
+- `review_get` returns the review's `headSha` and `finishedAt`; `review_post` requires both and refuses when the stored review's differ (a re-review happened since the user approved, even one with no new commits).
 - No general comment from MCP in v1: its text is built in the renderer (`generalText()` in `pr-reviews-panel.ts`) and `ReviewsPost` takes it as free text. Add later by moving that function to `shared/`. (Designer's call.)
 
 Otherwise `review_post` reuses the `ReviewsPost` logic as-is: markers, thread replies, line fallback, own-PR refusal, ids only. Posts immediately (not spaced) unless the planner finds a reason otherwise. Approval happens outside the app (the user tells openclaw which ids); the tool trusts the ids it is given but only from the stored review.
