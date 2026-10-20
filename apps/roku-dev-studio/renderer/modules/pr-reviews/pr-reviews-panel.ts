@@ -58,6 +58,7 @@ interface ReviewSummary {
   device?: ReviewDevice;
   lostLenses?: string[];
   deviceSkipped?: string;
+  posting?: { posted: number; postable: number };
 }
 
 interface ReviewFinding {
@@ -242,6 +243,47 @@ let prError = '';
 let prFilter: PrFilter = 'needs-you';
 let repoFilter = '';
 let search = '';
+
+/** Review-based list filter and sort, next to the GitHub-state quick filters. */
+type ReviewFilter = 'any' | 'not-reviewed' | 'issues' | 'device' | 'to-post' | 'posted' | 'outdated' | 'good';
+type SortBy = 'updated' | 'oldest' | 'issues' | 'unreviewed' | 'largest' | 'smallest';
+const REVIEW_FILTERS: { id: ReviewFilter; label: string }[] = [
+  { id: 'any', label: 'Any review state' },
+  { id: 'not-reviewed', label: 'Not reviewed' },
+  { id: 'issues', label: 'Issues to fix' },
+  { id: 'device', label: 'Needs a device check' },
+  { id: 'to-post', label: 'Comments to post' },
+  { id: 'posted', label: 'Comments posted' },
+  { id: 'outdated', label: 'New commits since review' },
+  { id: 'good', label: 'Looks good' },
+];
+const SORTS: { id: SortBy; label: string }[] = [
+  { id: 'updated', label: 'Recently updated' },
+  { id: 'oldest', label: 'Least recently updated' },
+  { id: 'issues', label: 'Most issues first' },
+  { id: 'unreviewed', label: 'Not reviewed first' },
+  { id: 'largest', label: 'Largest change' },
+  { id: 'smallest', label: 'Smallest change' },
+];
+const LIST_PREFS_KEY = 'prr.list-prefs';
+let reviewFilter: ReviewFilter = 'any';
+let labelFilter = '';
+let sortBy: SortBy = 'updated';
+try {
+  const saved = JSON.parse(localStorage.getItem(LIST_PREFS_KEY) ?? '{}') as { reviewFilter?: ReviewFilter; labelFilter?: string; sortBy?: SortBy };
+  if (REVIEW_FILTERS.some((f) => f.id === saved.reviewFilter)) reviewFilter = saved.reviewFilter!;
+  if (typeof saved.labelFilter === 'string') labelFilter = saved.labelFilter;
+  if (SORTS.some((x) => x.id === saved.sortBy)) sortBy = saved.sortBy!;
+} catch {
+  // Defaults: storage can be unavailable.
+}
+function saveListPrefs(): void {
+  try {
+    localStorage.setItem(LIST_PREFS_KEY, JSON.stringify({ reviewFilter, labelFilter, sortBy }));
+  } catch {
+    // Not persisted; the choice still applies this session.
+  }
+}
 let visibleLimit = PR_PAGE;
 
 // Repo picker state
@@ -1409,7 +1451,16 @@ function renderReviewControls(project: ProjectItem, pr: PullRequestItem): { chip
   const rereview = btn('start-review', outdated ? 'Review new commits' : 'Re-review', outdated);
   if (blocker) rereview.setAttribute('disabled', '');
   const incomplete = summary.lostLenses?.length && (counts.issue > 0 || counts['needs-device'] > 0) ? [chip('warn', 'Incomplete', `Lost: ${summary.lostLenses.join(', ')}. Re-review to cover them.`)] : [];
-  const wrap = h('span', { class: 'prr-review-chips' }, [label, ...incomplete, ...(outdated ? [chip('muted', 'Outdated', 'New commits since this review')] : [])]);
+  const facts = reviewFacts(project, pr, prData.get(project.id)?.viewer ?? '');
+  // Whether the drafted comments reached GitHub, without opening the review.
+  const postChip = facts.own || !facts.postable
+    ? []
+    : facts.posted >= facts.postable
+      ? [chip('success', facts.postable === 1 ? 'Comment posted' : `${facts.postable} comments posted`)]
+      : facts.posted > 0
+        ? [chip('warn', `${facts.posted} of ${facts.postable} posted`, 'Some drafted comments are not on GitHub yet. Open the review to post the rest.')]
+        : [chip('info', `${facts.postable} to post`, 'Drafted comments not posted to GitHub yet. Open the review to post them.')];
+  const wrap = h('span', { class: 'prr-review-chips' }, [label, ...incomplete, ...postChip, ...(outdated ? [chip('muted', 'Outdated', 'New commits since this review')] : [])]);
   if (summary.finishedAt) label.setAttribute('title', `Reviewed ${timeAgo(new Date(summary.finishedAt).toISOString())}${label.getAttribute('title') ? `. ${label.getAttribute('title')}` : ''}`);
   return { chip: wrap, buttons: [btn('view-review', 'View review'), rereview] };
 }
@@ -1424,6 +1475,7 @@ function renderPrRow(pr: PullRequestItem): HTMLElement {
       h('div', { class: 'prr-pr-title' }, [
         h('span', { class: 'prr-pr-num' }, [`#${pr.number}`]),
         h('button', { type: 'button', class: 'prr-pr-link', 'data-action': 'open-pr', 'data-url': pr.url, title: pr.title }, [pr.title]),
+        ...renderLabels(pr),
       ]),
       h('div', { class: 'prr-pr-state' }, [
         h('span', { class: `prr-pill prr-pill-${state.tone}`, title: state.hint }, [h('span', { class: 'prr-pill-dot', 'aria-hidden': 'true' }), state.label]),
@@ -1470,7 +1522,25 @@ function renderFilterBar(project: ProjectItem, data: PrData): HTMLElement {
   );
   const searchInput = h('input', { type: 'search', class: 'prr-input prr-search', placeholder: 'Search pull requests…', 'aria-label': 'Search pull requests', 'data-role': 'pr-search', autocomplete: 'off', spellcheck: 'false' }) as HTMLInputElement;
   searchInput.value = search;
-  return h('div', { class: 'prr-filterbar' }, [seg, h('div', { class: 'prr-filterbar-end' }, [repoSelect, searchInput])]);
+  const select = (role: string, label: string, options: { id: string; label: string }[], value: string) =>
+    h('label', { class: 'prr-field-inline' }, [
+      h('span', { class: 'prr-field-inline-label' }, [label]),
+      h('select', { class: 'prr-select', 'data-role': role, 'aria-label': label }, options.map((o) => h('option', { value: o.id, ...(o.id === value ? { selected: '' } : {}) }, [o.label]))),
+    ]);
+  const inScope = inRepo.filter((pr) => matchesFilter(pr, prFilter, data.viewer));
+  const reviewOptions = REVIEW_FILTERS.map((f) => ({ id: f.id, label: f.id === 'any' ? f.label : `${f.label} (${inScope.filter((pr) => matchesReview(project, pr, data.viewer, f.id)).length})` }));
+  const labelCounts = new Map<string, number>();
+  for (const pr of inScope) for (const l of pr.labels ?? []) labelCounts.set(l.name, (labelCounts.get(l.name) ?? 0) + 1);
+  const labelOptions = [{ id: '', label: 'Any label' }, ...[...labelCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, n]) => ({ id: name, label: `${name} (${n})` }))];
+  if (labelFilter && !labelCounts.has(labelFilter)) labelOptions.push({ id: labelFilter, label: `${labelFilter} (0)` });
+  const active = reviewFilter !== 'any' || !!labelFilter;
+  const row2 = h('div', { class: 'prr-filterbar-row' }, [
+    select('review-filter', 'Review', reviewOptions, reviewFilter),
+    ...(labelCounts.size || labelFilter ? [select('label-filter', 'Label', labelOptions, labelFilter)] : []),
+    select('sort-by', 'Sort', SORTS, sortBy),
+    ...(active ? [h('button', { type: 'button', class: 'prr-link-btn', 'data-action': 'clear-review-filters' }, ['Clear filters'])] : []),
+  ]);
+  return h('div', { class: 'prr-filterbar-wrap' }, [h('div', { class: 'prr-filterbar' }, [seg, h('div', { class: 'prr-filterbar-end' }, [repoSelect, searchInput])]), row2]);
 }
 
 function renderPrNotices(data: PrData): HTMLElement[] {
@@ -1484,6 +1554,71 @@ function renderPrNotices(data: PrData): HTMLElement[] {
   return notices;
 }
 
+/** What the saved review says about a PR, for filtering, sorting and the row chips. */
+function reviewFacts(project: ProjectItem, pr: PullRequestItem, viewer: string) {
+  const s = reviewFor(project, pr);
+  const done = s?.status === 'done';
+  const own = !!viewer && pr.author.toLowerCase() === viewer.toLowerCase();
+  const postable = done ? s?.posting?.postable ?? 0 : 0;
+  const posted = done ? s?.posting?.posted ?? 0 : 0;
+  return {
+    reviewed: done,
+    outdated: done && !!s?.headSha && s.headSha !== pr.headSha,
+    issues: done ? s?.counts?.issue ?? 0 : 0,
+    device: done ? s?.counts?.['needs-device'] ?? 0 : 0,
+    own,
+    postable,
+    posted,
+    // Your own PRs never get comments posted, so they are never "to post".
+    toPost: own ? 0 : Math.max(0, postable - posted),
+  };
+}
+
+function matchesReview(project: ProjectItem, pr: PullRequestItem, viewer: string, filter: ReviewFilter = reviewFilter): boolean {
+  if (filter === 'any') return true;
+  const f = reviewFacts(project, pr, viewer);
+  switch (filter) {
+    case 'not-reviewed': return !f.reviewed;
+    case 'issues': return f.issues > 0;
+    case 'device': return f.device > 0;
+    case 'to-post': return f.toPost > 0;
+    case 'posted': return f.posted > 0;
+    case 'outdated': return f.outdated;
+    case 'good': return f.reviewed && !f.outdated && f.issues === 0 && f.device === 0;
+  }
+}
+
+function sortPrs(project: ProjectItem, items: PullRequestItem[], viewer: string): PullRequestItem[] {
+  const updated = (pr: PullRequestItem) => Date.parse(pr.updatedAt) || 0;
+  const size = (pr: PullRequestItem) => pr.additions + pr.deletions;
+  const byUpdated = (a: PullRequestItem, b: PullRequestItem) => updated(b) - updated(a);
+  const list = [...items];
+  switch (sortBy) {
+    case 'oldest': return list.sort((a, b) => updated(a) - updated(b));
+    case 'largest': return list.sort((a, b) => size(b) - size(a) || byUpdated(a, b));
+    case 'smallest': return list.sort((a, b) => size(a) - size(b) || byUpdated(a, b));
+    case 'issues': return list.sort((a, b) => reviewFacts(project, b, viewer).issues - reviewFacts(project, a, viewer).issues || byUpdated(a, b));
+    case 'unreviewed': return list.sort((a, b) => Number(reviewFacts(project, a, viewer).reviewed) - Number(reviewFacts(project, b, viewer).reviewed) || byUpdated(a, b));
+    default: return list.sort(byUpdated);
+  }
+}
+
+function renderLabels(pr: PullRequestItem): HTMLElement[] {
+  const labels = pr.labels ?? [];
+  if (!labels.length) return [];
+  const shown = labels.slice(0, 3);
+  return [
+    h('span', { class: 'prr-labels' }, [
+      ...shown.map((l) => {
+        const chip = h('button', { type: 'button', class: 'prr-label', 'data-action': 'filter-label', 'data-label': l.name, title: `Show only PRs labelled "${l.name}"` }, [h('span', { class: 'prr-label-dot', 'aria-hidden': 'true' }), l.name]);
+        if (/^[0-9a-f]{6}$/i.test(l.color)) chip.style.setProperty('--label-color', `#${l.color}`);
+        return chip;
+      }),
+      ...(labels.length > shown.length ? [h('span', { class: 'prr-muted prr-label-more', title: labels.slice(3).map((l) => l.name).join(', ') }, [`+${labels.length - shown.length}`])] : []),
+    ]),
+  ];
+}
+
 function renderPrList(project: ProjectItem): HTMLElement[] {
   const data = prData.get(project.id);
   if (!data) {
@@ -1493,14 +1628,18 @@ function renderPrList(project: ProjectItem): HTMLElement[] {
   const nodes: HTMLElement[] = [renderFilterBar(project, data), ...renderPrNotices(data)];
   if (prError) nodes.push(h('div', { class: 'prr-alert', role: 'alert' }, [`Could not refresh: ${prError}`]));
 
-  const matches = data.items.filter((pr) => (!repoFilter || pr.repo === repoFilter) && matchesFilter(pr, prFilter, data.viewer) && matchesSearch(pr, search));
+  const matches = sortPrs(
+    project,
+    data.items.filter((pr) => (!repoFilter || pr.repo === repoFilter) && matchesFilter(pr, prFilter, data.viewer) && matchesSearch(pr, search) && matchesReview(project, pr, data.viewer) && (!labelFilter || (pr.labels ?? []).some((l) => l.name === labelFilter))),
+    data.viewer,
+  );
   if (data.items.length === 0) {
     nodes.push(h('div', { class: 'prr-card' }, [emptyState(['No open pull requests.', 'None of the chosen repos has an open PR right now.'])]));
     return nodes;
   }
   if (matches.length === 0) {
-    const showAll = prFilter !== 'all' || repoFilter || search ? h('button', { type: 'button', class: 'prr-btn', 'data-action': 'clear-filters' }, ['Show all pull requests']) : undefined;
-    const message = prFilter === 'needs-you' && !search && !repoFilter ? ['Nothing needs you right now.', 'No review is requested from you and none of your PRs has a problem.'] : ['No pull requests match.', 'Try another filter or search.'];
+    const showAll = prFilter !== 'all' || repoFilter || search || reviewFilter !== 'any' || labelFilter ? h('button', { type: 'button', class: 'prr-btn', 'data-action': 'clear-filters' }, ['Show all pull requests']) : undefined;
+    const message = prFilter === 'needs-you' && !search && !repoFilter && reviewFilter === 'any' && !labelFilter ? ['Nothing needs you right now.', 'No review is requested from you and none of your PRs has a problem.'] : ['No pull requests match.', 'Try another filter or search.'];
     nodes.push(h('div', { class: 'prr-card' }, [emptyState(message, showAll)]));
     return nodes;
   }
@@ -1853,10 +1992,24 @@ function handleClick(event: Event): void {
     prFilter = (target.getAttribute('data-filter') as PrFilter) ?? 'all';
     visibleLimit = PR_PAGE;
     render();
+  } else if (action === 'filter-label') {
+    labelFilter = target.getAttribute('data-label') ?? '';
+    saveListPrefs();
+    visibleLimit = PR_PAGE;
+    render();
+  } else if (action === 'clear-review-filters') {
+    reviewFilter = 'any';
+    labelFilter = '';
+    saveListPrefs();
+    visibleLimit = PR_PAGE;
+    render();
   } else if (action === 'clear-filters') {
     prFilter = 'all';
     repoFilter = '';
     search = '';
+    reviewFilter = 'any';
+    labelFilter = '';
+    saveListPrefs();
     visibleLimit = PR_PAGE;
     render();
   } else if (action === 'show-more') {
@@ -1965,6 +2118,13 @@ function handleChange(event: Event): void {
     repoFilter = target.value;
     visibleLimit = PR_PAGE;
     render();
+  } else if (role === 'review-filter' || role === 'label-filter' || role === 'sort-by') {
+    if (role === 'review-filter') reviewFilter = target.value as ReviewFilter;
+    else if (role === 'label-filter') labelFilter = target.value;
+    else sortBy = target.value as SortBy;
+    saveListPrefs();
+    visibleLimit = PR_PAGE;
+    render();
   }
 }
 
@@ -2019,6 +2179,9 @@ export function initPrReviewsPanel(): void {
   });
   reviewsApi?.onUpdate((summary) => applySummary(summary));
   reviewsApi?.onPostUpdate((update) => {
+    // A finished posting run changes the row's "posted" chip.
+    const listed = selected();
+    if (update.state !== 'running' && listed && listed.id === update.projectId) void loadReviews(listed);
     if (!posting || posting.key !== `${update.projectId}|${update.repo}#${update.number}`) return;
     posting.run = update;
     posting.state.posted = update.posted;

@@ -29,6 +29,8 @@ export interface PullRequestItem {
   reviewRequested: boolean;
   /** Head commit, to tell whether a saved review is outdated. */
   headSha: string;
+  /** GitHub labels, with their hex colour (no '#'). */
+  labels: { name: string; color: string }[];
 }
 
 export type PrFilter = 'needs-you' | 'mine' | 'problems' | 'all';
@@ -82,11 +84,11 @@ export function matchesFilter(pr: PullRequestItem, filter: PrFilter, viewer: str
   }
 }
 
-/** Free-text match over what a row shows: title, number, author, repo, and branches. */
+/** Free-text match over what a row shows: title, number, author, repo, branches and labels. */
 export function matchesSearch(pr: PullRequestItem, query: string): boolean {
   const needle = query.trim().toLowerCase().replace(/^#/, '');
   if (!needle) return true;
-  return [pr.title, String(pr.number), pr.author, pr.repo, pr.head, pr.base].some((field) => field.toLowerCase().includes(needle));
+  return [pr.title, String(pr.number), pr.author, pr.repo, pr.head, pr.base, ...(pr.labels ?? []).map((l) => l.name)].some((field) => field.toLowerCase().includes(needle));
 }
 
 /** "just now", "5m ago", "3h ago", "2d ago", then the date for anything older than 30 days. */
