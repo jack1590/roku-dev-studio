@@ -225,6 +225,20 @@
             <div class="settings-section">
               <div id="mcpClientsList" class="mcp-clients-list" aria-live="polite"></div>
             </div>
+            <div class="settings-section mcp-post-key">
+              <h3 class="settings-subheading" data-i18n="settings.mcpPostKeyTitle">Posting key</h3>
+              <p class="help-blurb" data-i18n="settings.mcpPostKeyBlurb">Agents can review PRs without it. To post review comments to GitHub, an MCP client needs this key as RDS_POST_KEY in its config. Only clients you give it to can post.</p>
+              <p class="help-blurb" id="mcpPostKeyStatus" aria-live="polite"></p>
+              <div class="mcp-post-key-new" id="mcpPostKeyNew" hidden>
+                <input type="text" readonly class="input" id="mcpPostKeyValue" aria-label="Posting key" spellcheck="false" />
+                <button type="button" class="btn btn-secondary btn-sm" id="btnCopyMcpPostKey" data-i18n="settings.mcpPostKeyCopy">Copy</button>
+                <p class="help-blurb" id="mcpPostKeyHint"></p>
+              </div>
+              <div class="mcp-post-key-actions">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnGenerateMcpPostKey" data-i18n="settings.mcpPostKeyGenerate">Generate</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnClearMcpPostKey" data-i18n="settings.mcpPostKeyClear">Clear</button>
+              </div>
+            </div>
           </div>
           <div class="section-save-dock">
             <button type="button" class="btn-timing-reset" id="btnResetMcpServer" data-i18n="settings.resetToDefaults">Reset to Defaults</button>

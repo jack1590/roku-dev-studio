@@ -288,6 +288,17 @@ function registerSettingsWindowIpc(
     win.destroy();
   });
 
+  ipcMain.handle(IPC.SettingsWindowMcpPostKey, async (_event: IpcMainInvokeEvent, payload: { action?: unknown }) => {
+    const postKey = require('./mcp-post-key') as typeof import('./mcp-post-key');
+    try {
+      if (payload?.action === 'generate') return { success: true, set: true, key: postKey.generatePostKey() };
+      if (payload?.action === 'clear') postKey.clearPostKey();
+      return { success: true, set: postKey.hasPostKey() };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
   ipcMain.handle(
     IPC.SettingsWindowOpenMcpConfig,
     async (_event: IpcMainInvokeEvent, payload: { id?: unknown }) => {

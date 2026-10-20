@@ -29,6 +29,7 @@ var IPC = {
   SettingsWindowReady: "settings-window:ready",
   /** Settings window asks main to open a detected MCP client's config file in the default editor (falls back to revealing in folder). */
   SettingsWindowOpenMcpConfig: "settings-window:open-mcp-config",
+  SettingsWindowMcpPostKey: "settings-window:mcp-post-key",
   /** Settings window probes a remote location's Network Inspector capability + current config. */
   SettingsWindowRemoteNetworkProbe: "settings-window:remote-network-probe",
   /** Settings window applies Network Inspector config to a remote location. */

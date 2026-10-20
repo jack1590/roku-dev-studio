@@ -62,6 +62,7 @@ var init_channels = __esm({
       SettingsWindowReady: "settings-window:ready",
       /** Settings window asks main to open a detected MCP client's config file in the default editor (falls back to revealing in folder). */
       SettingsWindowOpenMcpConfig: "settings-window:open-mcp-config",
+      SettingsWindowMcpPostKey: "settings-window:mcp-post-key",
       /** Settings window probes a remote location's Network Inspector capability + current config. */
       SettingsWindowRemoteNetworkProbe: "settings-window:remote-network-probe",
       /** Settings window applies Network Inspector config to a remote location. */
@@ -788,6 +789,8 @@ contextBridge.exposeInMainWorld("settingsApi", {
   save: (payload) => ipcRenderer.invoke(IPC2.SettingsWindowSave, payload),
   pickFolder: () => ipcRenderer.invoke(IPC2.SettingsWindowPickFolder),
   openMcpConfig: (id) => ipcRenderer.invoke(IPC2.SettingsWindowOpenMcpConfig, { id }),
+  // Posting key for the MCP review tools: 'status' | 'generate' | 'clear'. The key comes back only on generate.
+  mcpPostKey: (action) => ipcRenderer.invoke(IPC2.SettingsWindowMcpPostKey, { action }),
   closeWindow: () => ipcRenderer.send(IPC2.SettingsWindowClose),
   // "Demo App" button shown next to the "Show Try Demo App Button" toggle when it's off — asks
   // main to bring the main window forward and open the same picker modal there.

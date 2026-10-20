@@ -1465,6 +1465,58 @@ if (btnViewMcpTools) {
     openMcpToolsModal(btnViewMcpTools);
   });
 }
+// Posting key for the MCP review tools. The key itself is shown once, right after Generate.
+function renderMcpPostKey(set: boolean, key?: string) {
+  var status = el('mcpPostKeyStatus');
+  if (status) status.textContent = set ? S.settings.mcpPostKeyOn : S.settings.mcpPostKeyOff;
+  var gen = el('btnGenerateMcpPostKey');
+  if (gen) gen.textContent = set ? S.settings.mcpPostKeyRotate : S.settings.mcpPostKeyGenerate;
+  var clear = el('btnClearMcpPostKey');
+  if (clear) clear.disabled = !set;
+  var box = el('mcpPostKeyNew');
+  if (box) box.hidden = !key;
+  var value = el('mcpPostKeyValue');
+  if (value) value.value = key || '';
+  var hint = el('mcpPostKeyHint');
+  if (hint) hint.textContent = key ? S.settings.mcpPostKeyHint : '';
+}
+function mcpPostKeyAction(action: string) {
+  if (!api.mcpPostKey) return;
+  api.mcpPostKey(action).then(function (res: any) {
+    if (res && res.success) renderMcpPostKey(!!res.set, res.key);
+    else if (res && res.error) {
+      var status = el('mcpPostKeyStatus');
+      if (status) status.textContent = res.error;
+    }
+  }).catch(function () {});
+}
+mcpPostKeyAction('status');
+var btnGenerateMcpPostKey = el('btnGenerateMcpPostKey');
+if (btnGenerateMcpPostKey) {
+  btnGenerateMcpPostKey.addEventListener('click', function () {
+    var rotating = btnGenerateMcpPostKey.textContent === S.settings.mcpPostKeyRotate;
+    if (rotating && !window.confirm(S.settings.mcpPostKeyRotateConfirm)) return;
+    mcpPostKeyAction('generate');
+  });
+}
+var btnClearMcpPostKey = el('btnClearMcpPostKey');
+if (btnClearMcpPostKey) {
+  btnClearMcpPostKey.addEventListener('click', function () {
+    if (!window.confirm(S.settings.mcpPostKeyClearConfirm)) return;
+    mcpPostKeyAction('clear');
+  });
+}
+var btnCopyMcpPostKey = el('btnCopyMcpPostKey');
+if (btnCopyMcpPostKey) {
+  btnCopyMcpPostKey.addEventListener('click', function () {
+    var value = el('mcpPostKeyValue');
+    if (!value || !value.value) return;
+    navigator.clipboard.writeText(value.value).then(function () {
+      btnCopyMcpPostKey.textContent = S.settings.mcpPostKeyCopied;
+      setTimeout(function () { btnCopyMcpPostKey.textContent = S.settings.mcpPostKeyCopy; }, 1500);
+    }).catch(function () {});
+  });
+}
 var btnResetMcpServer = el('btnResetMcpServer');
 if (btnResetMcpServer) {
   btnResetMcpServer.addEventListener('click', function () {

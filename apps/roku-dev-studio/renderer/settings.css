@@ -1528,3 +1528,21 @@ body.privacy-mode .info-value[data-privacy="mask"]:hover {
 .projects-dismissals-repo { margin: 4px 0 0; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .projects-dismissals-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .projects-dismissal { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+
+/* MCP posting key (Settings → MCP Server). */
+.mcp-post-key-new,
+.mcp-post-key-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.mcp-post-key-new .input {
+  flex: 1 1 320px;
+  font-family: var(--font-mono, monospace);
+}
+.mcp-post-key-new .help-blurb {
+  flex-basis: 100%;
+  margin: 0;
+}
