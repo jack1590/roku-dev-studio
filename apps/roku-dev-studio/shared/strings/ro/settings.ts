@@ -76,6 +76,7 @@ export const settings = {
     debugger: 'Depanator',
     networkInspector: 'Inspector de rețea',
     actionScripts: 'Scripturi de acțiune',
+    reviews: 'Revizuiri PR',
   },
   mcpToolDescriptions: {
     probe_bridge: 'Verifică dacă Roku Dev Studio însuși este pornit și accesibil.',
@@ -129,6 +130,11 @@ export const settings = {
     get_capability_bundle: 'Un singur payload cu toate capacitățile statice — acțiuni, vocabular, presetări, contractul de autorizare.',
     validate_script: 'Validează un Action Script cu mai mulți pași înainte de a-l trimite către builder.',
     send_script_to_builder: 'Trimite un Action Script validat în Dev Studio Builder pentru revizuire.',
+    review_start: 'Pornește o revizuire de cod a unui PR GitHub sau a modificărilor confirmate dintr-o ramură locală.',
+    review_status: 'Progresul unei revizuiri: în curs, terminată sau eșuată.',
+    review_get: 'Constatările unei revizuiri terminate, cu ciorne de comentarii pentru GitHub.',
+    review_post: 'Publică în PR comentariile de revizuire aprobate de utilizator (necesită cheia de publicare).',
+    review_list: 'Revizuiri PR salvate și în curs.',
   },
 
   // Network Inspector — status line

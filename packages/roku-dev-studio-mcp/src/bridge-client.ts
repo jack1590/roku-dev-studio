@@ -131,6 +131,8 @@ export type BridgeRequest = {
   method: 'GET' | 'POST';
   pathname: string;
   body?: unknown;
+  /** Extra request headers (e.g. the review posting key). */
+  headers?: Record<string, string>;
 };
 
 export type BridgeResponse<T = unknown> =
@@ -147,7 +149,8 @@ export async function bridgeRequest<T = unknown>(req: BridgeRequest): Promise<Br
     const bodyStr = req.body == null ? undefined : JSON.stringify(req.body);
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${descriptor.token}`,
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      ...req.headers
     };
     if (bodyStr != null) {
       headers['Content-Type'] = 'application/json';

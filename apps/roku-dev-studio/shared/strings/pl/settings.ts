@@ -76,6 +76,7 @@ export const settings = {
     debugger: 'Debugger',
     networkInspector: 'Inspektor sieci',
     actionScripts: 'Skrypty akcji',
+    reviews: 'Przeglądy PR',
   },
   mcpToolDescriptions: {
     probe_bridge: 'Sprawdź, czy sam Roku Dev Studio jest uruchomiony i dostępny.',
@@ -129,6 +130,11 @@ export const settings = {
     get_capability_bundle: 'Jeden pakiet ze wszystkimi statycznymi możliwościami — akcje, słownik, ustawienia domyślne, kontrakt autorski.',
     validate_script: 'Zweryfikuj wieloetapowy Action Script przed wysłaniem go do buildera.',
     send_script_to_builder: 'Wyślij zweryfikowany Action Script do Dev Studio Buildera do przeglądu.',
+    review_start: 'Rozpocznij przegląd kodu PR-a z GitHuba lub zatwierdzonych zmian lokalnej gałęzi.',
+    review_status: 'Postęp przeglądu: w toku, zakończony lub nieudany.',
+    review_get: 'Wyniki zakończonego przeglądu z projektami komentarzy na GitHubie.',
+    review_post: 'Opublikuj w PR-ze komentarze z przeglądu zatwierdzone przez użytkownika (wymaga klucza publikowania).',
+    review_list: 'Zapisane i trwające przeglądy PR.',
   },
 
   // Network Inspector — status line

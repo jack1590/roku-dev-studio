@@ -76,6 +76,7 @@ export const settings = {
     debugger: 'Depurador',
     networkInspector: 'Inspector de red',
     actionScripts: 'Scripts de acción',
+    reviews: 'Revisiones de PR',
   },
   mcpToolDescriptions: {
     probe_bridge: 'Comprobar si Roku Dev Studio está en ejecución y accesible.',
@@ -129,6 +130,11 @@ export const settings = {
     get_capability_bundle: 'Un único payload con todas las capacidades estáticas: acciones, vocabulario, ajustes predefinidos, contrato de autoría.',
     validate_script: 'Validar un Action Script de varios pasos antes de enviarlo al generador.',
     send_script_to_builder: 'Enviar un Action Script validado al Dev Studio Builder para su revisión.',
+    review_start: 'Iniciar una revisión de código de un PR de GitHub o del trabajo confirmado de una rama local.',
+    review_status: 'Progreso de una revisión: en curso, terminada o fallida.',
+    review_get: 'Hallazgos de una revisión terminada, con borradores de comentarios para GitHub.',
+    review_post: 'Publicar en el PR los comentarios de revisión que el usuario aprobó (requiere la clave de publicación).',
+    review_list: 'Revisiones de PR guardadas y en curso.',
   },
 
   // Network Inspector — status line

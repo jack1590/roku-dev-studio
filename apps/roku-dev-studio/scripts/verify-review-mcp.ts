@@ -1,6 +1,6 @@
 /** Pins the review MCP helpers: job ids, project lookup, remotes, the draft view. Run with `npm run verify:review-mcp`. */
 import assert from 'node:assert/strict';
-import { draftView, encodeJobId, parseGitHubRemote, parseJobId, resolveProject } from '../shared/review-mcp.js';
+import { checkPostRequest, draftView, encodeJobId, parseGitHubRemote, parseJobId, resolveProject } from '../shared/review-mcp.js';
 
 assert.equal(encodeJobId({ kind: 'pr', projectId: 'acme', repo: 'o/r', number: 12 }), 'pr:acme:o/r#12');
 assert.equal(encodeJobId({ kind: 'local', projectId: 'acme', repo: 'o/r', branch: 'feat/x' }), 'local:acme:o/r:feat/x');
@@ -43,5 +43,25 @@ assert.equal(view[1].posted, true);
 assert.equal(view[1].postedUrl, 'u');
 assert.equal(view[2].postable, false);
 assert.equal(view[3].postable, false); // no comment text
+
+// review_post guard: every refusal happens before any GitHub call.
+const prJob = parseJobId('pr:acme:o/r#12');
+const base = { keySet: true, keyMatches: true, jobId: prJob, storedHeadSha: 'h', findings: view, headSha: 'h', ids: ['f1'] };
+assert.deepEqual(checkPostRequest(base), { ok: true, ids: ['f1'] });
+assert.equal((checkPostRequest({ ...base, keySet: false }) as { status: number }).status, 403);
+assert.equal((checkPostRequest({ ...base, keyMatches: false }) as { status: number }).status, 403);
+assert.match((checkPostRequest({ ...base, keyMatches: false }) as { error: string }).error, /RDS_POST_KEY/);
+assert.equal((checkPostRequest({ ...base, jobId: parseJobId('local:acme:o/r:feat/x') }) as { status: number }).status, 400);
+assert.equal((checkPostRequest({ ...base, jobId: null }) as { status: number }).status, 400);
+assert.equal((checkPostRequest({ ...base, storedHeadSha: null, findings: null }) as { status: number }).status, 404);
+const stale = checkPostRequest({ ...base, headSha: 'old' }) as { status: number; error: string };
+assert.equal(stale.status, 409);
+assert.match(stale.error, /changed/);
+const unknown = checkPostRequest({ ...base, ids: ['f1', 'nope', 'f3'] }) as { status: number; error: string };
+assert.equal(unknown.status, 400);
+assert.match(unknown.error, /nope/);
+assert.match(unknown.error, /f3/); // dismissed: not postable
+assert.equal((checkPostRequest({ ...base, ids: [] }) as { status: number }).status, 400);
+assert.deepEqual(checkPostRequest({ ...base, ids: ['f2-reply-1'] }), { ok: true, ids: ['f2-reply-1'] }); // already posted is fine: posting skips it
 
 console.log('verify-review-mcp: ok');

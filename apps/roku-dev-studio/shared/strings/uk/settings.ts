@@ -76,6 +76,7 @@ export const settings = {
     debugger: 'Дебагер',
     networkInspector: 'Інспектор мережі',
     actionScripts: 'Скрипти дій',
+    reviews: 'Рев’ю PR',
   },
   mcpToolDescriptions: {
     probe_bridge: 'Перевірити, чи запущений і доступний сам Roku Dev Studio.',
@@ -129,6 +130,11 @@ export const settings = {
     get_capability_bundle: 'Єдиний пакет усіх статичних можливостей — дії, словник, шаблони, контракт авторства.',
     validate_script: 'Перевірити багатокроковий Action Script перед надсиланням у builder.',
     send_script_to_builder: 'Надіслати перевірений Action Script у Dev Studio Builder для перегляду.',
+    review_start: 'Почати рев’ю коду PR з GitHub або закомічених змін локальної гілки.',
+    review_status: 'Хід рев’ю: триває, завершено чи з помилкою.',
+    review_get: 'Знахідки завершеного рев’ю з чернетками коментарів для GitHub.',
+    review_post: 'Опублікувати в PR коментарі рев’ю, схвалені користувачем (потрібен ключ публікації).',
+    review_list: 'Збережені та поточні рев’ю PR.',
   },
 
   // Network Inspector — status line

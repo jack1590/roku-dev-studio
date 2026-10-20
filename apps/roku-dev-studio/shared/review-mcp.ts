@@ -98,3 +98,34 @@ export function draftView(result: { headSha: string; findings: DraftSource[] }, 
     };
   });
 }
+
+/**
+ * The checks `review_post` runs before anything reaches GitHub, in order: posting key, PR (not
+ * local) review, saved review, unchanged head (the user approved this exact review), known
+ * postable ids. Ids already posted pass: posting skips them.
+ */
+export function checkPostRequest(input: {
+  keySet: boolean;
+  keyMatches: boolean;
+  jobId: ReviewJobId | null;
+  storedHeadSha: string | null;
+  findings: McpFinding[] | null;
+  headSha: unknown;
+  ids: unknown;
+}): { ok: true; ids: string[] } | { ok: false; status: number; error: string } {
+  if (!input.keySet || !input.keyMatches) {
+    return { ok: false, status: 403, error: 'Posting is not enabled for this client. Set a posting key in Dev Studio → Settings → MCP Server and pass it to this client as RDS_POST_KEY.' };
+  }
+  if (!input.jobId) return { ok: false, status: 400, error: 'Unknown jobId.' };
+  if (input.jobId.kind !== 'pr') return { ok: false, status: 400, error: 'Local reviews are never posted.' };
+  if (!input.storedHeadSha || !input.findings) return { ok: false, status: 404, error: 'No finished review for this PR yet.' };
+  if (input.headSha !== input.storedHeadSha) {
+    return { ok: false, status: 409, error: `The review changed since you read it (now at ${input.storedHeadSha.slice(0, 7)}). Call review_get again and get approval for the new comments.` };
+  }
+  const ids = Array.isArray(input.ids) ? input.ids.filter((id): id is string => typeof id === 'string') : [];
+  if (!ids.length) return { ok: false, status: 400, error: 'Pass ids: the finding ids the user approved.' };
+  const postable = new Set(input.findings.filter((f) => f.postable).map((f) => f.id));
+  const bad = ids.filter((id) => !postable.has(id));
+  if (bad.length) return { ok: false, status: 400, error: `Not postable on this review: ${bad.join(', ')}. Nothing was posted.` };
+  return { ok: true, ids };
+}

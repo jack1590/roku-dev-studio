@@ -131,6 +131,26 @@ esbuild's `text` loader inlines every `.md` import at build time — the dist is
 | `network_inspector_analyze` | live | Aggregate the buffer into hotspots and rollups — status, hosts, content types. |
 | `network_inspector_get_ca_info` | live | Return the MITM CA fingerprint and proxy info for HTTPS decryption. |
 
+### PR Reviews (hand-written)
+
+The same multi-model review as Dev Studio's PR Reviews tab, for a GitHub PR or for the committed work on a local branch (before it is a PR). Reviews take minutes: start one, poll it, then read it.
+
+| Tool | Live? | Notes |
+| --- | --- | --- |
+| `review_start` | live | Start a review of `repo` + `number`, or of the branch checked out at `path` (diffed against `base`, default origin/HEAD). Returns a `jobId`. |
+| `review_status` | live | Progress of a review; poll about every 30 s until `done` or `failed`. |
+| `review_get` | live | Findings with severity, confidence, location and the draft GitHub comment exactly as it would post, plus the review's `headSha`. |
+| `review_post` | live | Post the finding ids the user approved to the PR. Needs `headSha` from `review_get` and a posting key (see below). Never posts free text, local reviews, or your own PRs. |
+| `review_list` | live | Saved and in-progress PR reviews with their `jobId`s. |
+
+**Posting key.** `review_post` writes to GitHub, so it needs a second secret on top of the bridge token. Generate one in Dev Studio → Settings → MCP Server → Posting key, then add it only to the clients that may post:
+
+```json
+"roku-dev-studio": { "command": "…", "args": ["…"], "env": { "RDS_POST_KEY": "<key>" } }
+```
+
+Clients without it can review but not post, which also keeps a prompt-injected PR from making an agent post. It does not protect against malware running as your user, which could read the client config too.
+
 ### BrightScript Debugger (hand-written)
 
 Stateful and event-driven (control port 8081) — attach first, then most verbs only work while the target is halted: `debugger_attach` → set breakpoints → `debugger_wait_for_stop` → inspect → step / continue.
@@ -323,7 +343,7 @@ Cursor caches the tool / resource / prompt list at `~/.cursor/projects/<project>
 1. **Cursor → Settings → MCP** → toggle `user-roku-dev-studio` off, then on. Cursor respawns the child process and re-runs discovery.
 2. *Or* `rm -rf ~/.cursor/projects/<project>/mcps/user-roku-dev-studio` and restart Cursor.
 
-After refresh you should see 51 tools (30 bespoke + 21 op-backed), 4 resources, and 3 prompts in the descriptor folder. To re-derive these counts after edits, `rg "^\s*name: '" src/tools.ts | wc -l` for bespoke tools, and `rg "^\s*id:\s*'" ../../packages/roku-dev-studio-api/lib/operations.ts | wc -l` for op-backed tools.
+After refresh you should see 56 tools (35 bespoke + 21 op-backed), 4 resources, and 3 prompts in the descriptor folder. To re-derive these counts after edits, `rg "^\s*name: '" src/tools.ts | wc -l` for bespoke tools, and `rg "^\s*id:\s*'" ../../packages/roku-dev-studio-api/lib/operations.ts | wc -l` for op-backed tools.
 
 ## Design background
 

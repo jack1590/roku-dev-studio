@@ -78,6 +78,7 @@ export const settings = {
     debugger: 'Debugger',
     networkInspector: 'Network Inspector',
     actionScripts: 'Action Scripts',
+    reviews: 'PR Reviews',
   },
   // One-line description per MCP tool for the View MCP Tools modal, keyed by the tool's literal
   // MCP name (kept as-is — those are protocol identifiers, not translatable). The descriptions
@@ -135,6 +136,11 @@ export const settings = {
     get_capability_bundle: 'Single payload of every static capability — actions, vocab, presets, authoring contract.',
     validate_script: 'Validate a multi-step Action Script before sending it to the builder.',
     send_script_to_builder: 'Drop a validated Action Script into Dev Studio Builder for review.',
+    review_start: 'Start a code review of a GitHub PR or of the committed work on a local branch.',
+    review_status: 'Progress of a review: running, done or failed.',
+    review_get: 'Findings of a finished review, with draft GitHub comments.',
+    review_post: 'Post review comments the user approved to the PR (needs the posting key).',
+    review_list: 'Saved and in-progress PR reviews.',
   },
 
   // Network Inspector — status line
