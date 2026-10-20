@@ -25,21 +25,25 @@ export function parseJobId(s: string): ReviewJobId | null {
   return null;
 }
 
-/** `owner/name` for a GitHub remote URL (https, scp-style or ssh), else null. */
+/** `owner/name` for a GitHub remote URL (https, scp-style or ssh), else null. Credentials in the URL are dropped, never returned. */
 export function parseGitHubRemote(url: string): string | null {
-  const m = /^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([^/]+\/[^/]+?)(?:\.git)?\/?$/.exec(url.trim());
+  const bare = url.trim().replace(/^(https|ssh):\/\/[^/@]*@/, '$1://');
+  const m = /^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/github\.com\/)([^/]+\/[^/]+?)(?:\.git)?\/?$/.exec(bare);
   return m && REPO_PATTERN.test(m[1]) ? m[1] : null;
 }
 
 /** The project whose repos include `repo`; ambiguous unless `projectId` picks one. */
-export function resolveProject(repo: string, projects: { id: string; name: string; repos?: string[] }[], projectId?: string): { ok: true; projectId: string } | { ok: false; error: string } {
+export function resolveProject(repo: string, projects: { id: string; name: string; repos?: string[] }[], projectId?: string): { ok: true; projectId: string; repo: string } | { ok: false; error: string } {
+  // GitHub names are case-insensitive; the project's spelling is returned, so results key the same as the PR list's.
+  const listed = (p: { repos?: string[] }) => (p.repos ?? []).find((r) => r.toLowerCase() === repo.toLowerCase());
   if (projectId) {
     const chosen = projects.find((p) => p.id === projectId);
     if (!chosen) return { ok: false, error: `No project with id "${projectId}".` };
-    return (chosen.repos ?? []).includes(repo) ? { ok: true, projectId } : { ok: false, error: `${repo} is not in project ${chosen.name}. Add it in Settings → Projects.` };
+    const name = listed(chosen);
+    return name ? { ok: true, projectId, repo: name } : { ok: false, error: `${repo} is not in project ${chosen.name}. Add it in Settings → Projects.` };
   }
-  const matches = projects.filter((p) => (p.repos ?? []).includes(repo));
-  if (matches.length === 1) return { ok: true, projectId: matches[0].id };
+  const matches = projects.filter((p) => listed(p));
+  if (matches.length === 1) return { ok: true, projectId: matches[0].id, repo: listed(matches[0])! };
   if (!matches.length) return { ok: false, error: `No Dev Studio project lists ${repo}. Add it in Settings → Projects.` };
   return { ok: false, error: `${repo} is in more than one project (${matches.map((p) => `${p.name} [${p.id}]`).join(', ')}). Pass projectId.` };
 }
@@ -101,7 +105,7 @@ export function draftView(result: { headSha: string; findings: DraftSource[] }, 
 
 /**
  * The checks `review_post` runs before anything reaches GitHub, in order: posting key, PR (not
- * local) review, saved review, unchanged head (the user approved this exact review), known
+ * local) review, saved review, the same review run the caller read (head and finish time), known
  * postable ids. Ids already posted pass: posting skips them.
  */
 export function checkPostRequest(input: {
@@ -109,8 +113,10 @@ export function checkPostRequest(input: {
   keyMatches: boolean;
   jobId: ReviewJobId | null;
   storedHeadSha: string | null;
+  storedFinishedAt: number | null;
   findings: McpFinding[] | null;
   headSha: unknown;
+  finishedAt: unknown;
   ids: unknown;
 }): { ok: true; ids: string[] } | { ok: false; status: number; error: string } {
   if (!input.keySet || !input.keyMatches) {
@@ -119,7 +125,8 @@ export function checkPostRequest(input: {
   if (!input.jobId) return { ok: false, status: 400, error: 'Unknown jobId.' };
   if (input.jobId.kind !== 'pr') return { ok: false, status: 400, error: 'Local reviews are never posted.' };
   if (!input.storedHeadSha || !input.findings) return { ok: false, status: 404, error: 'No finished review for this PR yet.' };
-  if (input.headSha !== input.storedHeadSha) {
+  // Head and finish time: a re-review without new commits keeps the head but drafts new comments.
+  if (input.headSha !== input.storedHeadSha || input.finishedAt !== input.storedFinishedAt) {
     return { ok: false, status: 409, error: `The review changed since you read it (now at ${input.storedHeadSha.slice(0, 7)}). Call review_get again and get approval for the new comments.` };
   }
   const ids = Array.isArray(input.ids) ? input.ids.filter((id): id is string => typeof id === 'string') : [];

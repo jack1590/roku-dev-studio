@@ -133,6 +133,8 @@ export type BridgeRequest = {
   body?: unknown;
   /** Extra request headers (e.g. the review posting key). */
   headers?: Record<string, string>;
+  /** Overrides REQUEST_TIMEOUT_MS for a call that legitimately runs longer (posting many review comments). */
+  timeoutMs?: number;
 };
 
 export type BridgeResponse<T = unknown> =
@@ -163,7 +165,7 @@ export async function bridgeRequest<T = unknown>(req: BridgeRequest): Promise<Br
         method: req.method,
         path: req.pathname,
         headers,
-        timeout: REQUEST_TIMEOUT_MS
+        timeout: req.timeoutMs ?? REQUEST_TIMEOUT_MS
       },
       (res) => {
         const chunks: Buffer[] = [];

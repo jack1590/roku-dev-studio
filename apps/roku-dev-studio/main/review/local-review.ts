@@ -68,10 +68,12 @@ export async function startLocalReview(input: { path: string; base?: string; pro
   if (!input.path || !path.isAbsolute(input.path) || !fs.existsSync(input.path)) return { success: false, error: 'path must be an absolute path to a git checkout.' };
   const url = await gitOut(['remote', 'get-url', 'origin'], input.path).catch(() => '');
   if (!url) return { success: false, error: `${input.path} is not a git checkout with an origin remote.` };
-  const repo = parseGitHubRemote(url);
-  if (!repo) return { success: false, error: `The origin remote (${url}) is not a GitHub repository.` };
-  const resolved = resolveProject(repo, listProjectRecords(), input.projectId);
+  // Never echo the URL: it can carry credentials (https://user:token@github.com/...).
+  const remote = parseGitHubRemote(url);
+  if (!remote) return { success: false, error: 'The origin remote is not a GitHub repository.' };
+  const resolved = resolveProject(remote, listProjectRecords(), input.projectId);
   if (!resolved.ok) return { success: false, error: resolved.error };
+  const repo = resolved.repo;
   const branch = await gitOut(['symbolic-ref', '--short', 'HEAD'], input.path).catch(() => '');
   if (!branch) return { success: false, error: 'HEAD is detached. Check out a branch first.' };
 

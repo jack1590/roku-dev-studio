@@ -16,11 +16,14 @@ assert.equal(parseGitHubRemote('https://github.com/o/r'), 'o/r');
 assert.equal(parseGitHubRemote('https://github.com/o/r.git'), 'o/r');
 assert.equal(parseGitHubRemote('ssh://git@github.com/o/r.git'), 'o/r');
 assert.equal(parseGitHubRemote('https://gitlab.com/o/r.git'), null);
+assert.equal(parseGitHubRemote('https://x-access-token:ghp_secret@github.com/o/r.git'), 'o/r'); // credentials in the URL are ignored
+assert.equal(parseGitHubRemote('https://user@github.com/o/r'), 'o/r');
 
 const projects = [{ id: 'a', name: 'A', repos: ['o/r'] }, { id: 'b', name: 'B', repos: ['o/r', 'o/s'] }];
-assert.deepEqual(resolveProject('o/s', projects), { ok: true, projectId: 'b' });
+assert.deepEqual(resolveProject('o/s', projects), { ok: true, projectId: 'b', repo: 'o/s' });
+assert.deepEqual(resolveProject('O/S', projects), { ok: true, projectId: 'b', repo: 'o/s' }); // GitHub names are case-insensitive; the project's spelling wins
 assert.match((resolveProject('o/r', projects) as { error: string }).error, /A.*B/);
-assert.deepEqual(resolveProject('o/r', projects, 'a'), { ok: true, projectId: 'a' });
+assert.deepEqual(resolveProject('o/r', projects, 'a'), { ok: true, projectId: 'a', repo: 'o/r' });
 assert.match((resolveProject('o/x', projects) as { error: string }).error, /o\/x/);
 assert.match((resolveProject('o/s', projects, 'a') as { error: string }).error, /not in/);
 
@@ -46,7 +49,7 @@ assert.equal(view[3].postable, false); // no comment text
 
 // review_post guard: every refusal happens before any GitHub call.
 const prJob = parseJobId('pr:acme:o/r#12');
-const base = { keySet: true, keyMatches: true, jobId: prJob, storedHeadSha: 'h', findings: view, headSha: 'h', ids: ['f1'] };
+const base = { keySet: true, keyMatches: true, jobId: prJob, storedHeadSha: 'h', storedFinishedAt: 100, findings: view, headSha: 'h', finishedAt: 100, ids: ['f1'] };
 assert.deepEqual(checkPostRequest(base), { ok: true, ids: ['f1'] });
 assert.equal((checkPostRequest({ ...base, keySet: false }) as { status: number }).status, 403);
 assert.equal((checkPostRequest({ ...base, keyMatches: false }) as { status: number }).status, 403);
@@ -57,6 +60,9 @@ assert.equal((checkPostRequest({ ...base, storedHeadSha: null, findings: null })
 const stale = checkPostRequest({ ...base, headSha: 'old' }) as { status: number; error: string };
 assert.equal(stale.status, 409);
 assert.match(stale.error, /changed/);
+// A re-review with no new commits keeps the head but drafts new comments: still stale.
+assert.equal((checkPostRequest({ ...base, finishedAt: 99 }) as { status: number }).status, 409);
+assert.equal((checkPostRequest({ ...base, finishedAt: undefined }) as { status: number }).status, 409);
 const unknown = checkPostRequest({ ...base, ids: ['f1', 'nope', 'f3'] }) as { status: number; error: string };
 assert.equal(unknown.status, 400);
 assert.match(unknown.error, /nope/);

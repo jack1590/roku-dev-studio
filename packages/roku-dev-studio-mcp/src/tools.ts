@@ -1897,8 +1897,8 @@ const REVIEW_STATUS_SCHEMA = {
   additionalProperties: true
 };
 
-async function reviewBridgeTool(label: string, pathname: string, args: Record<string, unknown>, headers?: Record<string, string>): Promise<ToolResult> {
-  const res = await bridgeRequest({ method: 'POST', pathname, body: args, ...(headers ? { headers } : {}) });
+async function reviewBridgeTool(label: string, pathname: string, args: Record<string, unknown>, extra?: { headers?: Record<string, string>; timeoutMs?: number }): Promise<ToolResult> {
+  const res = await bridgeRequest({ method: 'POST', pathname, body: args, ...extra });
   if (!res.ok) {
     // Review errors are written for the agent (what to fix, what to call next): pass them through as they are.
     return res.status >= 400 && res.status < 500 ? errorResult(`${label}: ${res.error}`, { httpStatus: res.status, bridgeError: res.error }) : bridgeToolFailure(label, res);
@@ -1961,7 +1961,7 @@ const REVIEW_TOOLS: Tool[] = [
     description: [
       'The finished review: `summary`, `counts`, `headSha`, the JIRA ticket it was checked against, files skipped as too large or generated, lenses lost (an incomplete review), and `findings[]`.',
       'Each finding has an `id`, `status` (issue = verified problem; needs-device = needs a device to confirm; noted = minor/hedged, below the counting floors; dismissed = judged not real), `severity`, `confidence` (0-1), `file`/`line`, `detail`, and `comment`: the draft GitHub comment exactly as it would post (including edits made in Dev Studio).',
-      '`postable` findings can be posted with `review_post` (PR reviews only). Show the user the findings and drafts and post only what they approve, passing this `headSha`.'
+      '`postable` findings can be posted with `review_post` (PR reviews only). Show the user the findings and drafts and post only what they approve, passing this `headSha` and `finishedAt`.'
     ],
     inputSchema: {
       type: 'object',
@@ -1981,6 +1981,7 @@ const REVIEW_TOOLS: Tool[] = [
         branch: { type: 'string' },
         base: { type: 'string' },
         headSha: { type: 'string' },
+        finishedAt: { type: 'number' },
         summary: { type: 'string' },
         counts: { type: 'object', additionalProperties: true },
         lostLenses: { type: 'array', items: { type: 'string' } },
@@ -1989,7 +1990,7 @@ const REVIEW_TOOLS: Tool[] = [
         incremental: { type: 'object', additionalProperties: true },
         findings: { type: 'array', items: FINDING_SCHEMA }
       },
-      required: ['jobId', 'kind', 'repo', 'headSha', 'summary', 'counts', 'findings'],
+      required: ['jobId', 'kind', 'repo', 'headSha', 'finishedAt', 'summary', 'counts', 'findings'],
       additionalProperties: false
     },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
@@ -2000,7 +2001,7 @@ const REVIEW_TOOLS: Tool[] = [
     title: 'Post approved review comments',
     description: [
       'Post chosen draft comments of a finished PR review to GitHub, as the project\'s GitHub token. Only post `ids` the user explicitly approved after seeing them; never on your own initiative.',
-      'Pass the `headSha` from `review_get`: if the PR was re-reviewed since, nothing is posted and you must show the new review again. Takes finding ids only (no free text); local reviews and your own PRs are never posted. Comments already on GitHub are skipped.',
+      'Pass `headSha` and `finishedAt` from `review_get`: if the PR was re-reviewed since, nothing is posted and you must show the new review again. Takes finding ids only (no free text); local reviews and your own PRs are never posted. Comments already on GitHub are skipped.',
       'Needs a posting key: the user sets one in Dev Studio → Settings → MCP Server and adds it to this client\'s MCP config as the `RDS_POST_KEY` environment variable. Without it the call is refused.'
     ],
     inputSchema: {
@@ -2008,9 +2009,10 @@ const REVIEW_TOOLS: Tool[] = [
       properties: {
         jobId: { type: 'string' },
         headSha: { type: 'string', description: 'headSha from review_get.' },
+        finishedAt: { type: 'number', description: 'finishedAt from review_get.' },
         ids: { type: 'array', items: { type: 'string' }, description: 'Finding ids the user approved.' }
       },
-      required: ['jobId', 'headSha', 'ids'],
+      required: ['jobId', 'headSha', 'finishedAt', 'ids'],
       additionalProperties: false
     },
     outputSchema: {
@@ -2023,7 +2025,8 @@ const REVIEW_TOOLS: Tool[] = [
       additionalProperties: false
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-    handler: async (args) => reviewBridgeTool('review_post', '/review/post', args, { 'X-RDS-Post-Key': process.env.RDS_POST_KEY ?? '' })
+    // Posting waits until every comment is sent (GitHub calls one after another): allow minutes, not the default 35 s.
+    handler: async (args) => reviewBridgeTool('review_post', '/review/post', args, { headers: { 'X-RDS-Post-Key': process.env.RDS_POST_KEY ?? '' }, timeoutMs: 10 * 60_000 })
   },
   {
     name: 'review_list',

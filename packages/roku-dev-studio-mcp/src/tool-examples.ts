@@ -97,6 +97,6 @@ export const TOOL_EXAMPLES: Record<string, Record<string, unknown>> = {
   review_start: { path: '/Users/me/code/my-channel', base: 'develop' },
   review_status: { jobId: 'local:acme:acme/my-channel:feature/PLAY-123-captions' },
   review_get: { jobId: 'pr:acme:acme/my-channel#42' },
-  review_post: { jobId: 'pr:acme:acme/my-channel#42', headSha: '3f9c2a7e1b4d5c6a8e9f0a1b2c3d4e5f6a7b8c9d', ids: ['f3', 'f7'] },
+  review_post: { jobId: 'pr:acme:acme/my-channel#42', headSha: '3f9c2a7e1b4d5c6a8e9f0a1b2c3d4e5f6a7b8c9d', finishedAt: 1760900000000, ids: ['f3', 'f7'] },
   review_list: { projectId: 'acme' }
 };

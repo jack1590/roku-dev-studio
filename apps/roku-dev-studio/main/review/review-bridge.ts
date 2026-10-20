@@ -36,6 +36,7 @@ function statusBody(jobId: string, s: { status: string; phase?: string; detail?:
 function resultBody(result: ReviewResult) {
   return {
     headSha: result.headSha,
+    finishedAt: result.finishedAt,
     summary: result.summary,
     counts: result.counts,
     ...(result.lostLenses?.length ? { lostLenses: result.lostLenses } : {}),
@@ -59,7 +60,7 @@ export async function reviewRoute(pathname: string, body: Record<string, unknown
     if (!repo || !Number.isInteger(number) || number <= 0) return { status: 400, body: { error: 'Pass either path (a local checkout) or repo ("owner/name") and number.' } };
     const project = resolveProject(repo, listProjectRecords(), projectId);
     if (!project.ok) return { status: 400, body: { error: project.error } };
-    const started = startReview(project.projectId, repo, number);
+    const started = startReview(project.projectId, project.repo, number);
     if (!started.success) return { status: 400, body: { error: started.error } };
     const jobId = prJobId(started.summary);
     return { status: 200, body: { jobId, status: statusBody(jobId, started.summary) } };
@@ -96,7 +97,7 @@ export async function reviewRoute(pathname: string, body: Record<string, unknown
     const key = getPostKey();
     const stored = id?.kind === 'pr' ? readStored(id.projectId, id.repo, id.number) : null;
     const findings = stored && id?.kind === 'pr' ? draftView(stored.result, readPostingState(id.projectId, id.repo, id.number)) : null;
-    const check = checkPostRequest({ keySet: !!key, keyMatches: !!key && sameKey(postKeyHeader, key), jobId: id, storedHeadSha: stored?.result.headSha ?? null, findings, headSha: body.headSha, ids: body.ids });
+    const check = checkPostRequest({ keySet: !!key, keyMatches: !!key && sameKey(postKeyHeader, key), jobId: id, storedHeadSha: stored?.result.headSha ?? null, storedFinishedAt: stored?.result.finishedAt ?? null, findings, headSha: body.headSha, finishedAt: body.finishedAt, ids: body.ids });
     if (!check.ok) return { status: check.status, body: { error: check.error } };
     const pr = id as { projectId: string; repo: string; number: number };
     const started = await startPosting({ projectId: pr.projectId, repo: pr.repo, number: pr.number, ids: check.ids, spaced: false });

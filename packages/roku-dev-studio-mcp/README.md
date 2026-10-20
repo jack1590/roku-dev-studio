@@ -139,8 +139,8 @@ The same multi-model review as Dev Studio's PR Reviews tab, for a GitHub PR or f
 | --- | --- | --- |
 | `review_start` | live | Start a review of `repo` + `number`, or of the branch checked out at `path` (diffed against `base`, default origin/HEAD). Returns a `jobId`. |
 | `review_status` | live | Progress of a review; poll about every 30 s until `done` or `failed`. |
-| `review_get` | live | Findings with severity, confidence, location and the draft GitHub comment exactly as it would post, plus the review's `headSha`. |
-| `review_post` | live | Post the finding ids the user approved to the PR. Needs `headSha` from `review_get` and a posting key (see below). Never posts free text, local reviews, or your own PRs. |
+| `review_get` | live | Findings with severity, confidence, location and the draft GitHub comment exactly as it would post, plus the review's `headSha` and `finishedAt`. |
+| `review_post` | live | Post the finding ids the user approved to the PR. Needs `headSha` and `finishedAt` from `review_get` and a posting key (see below). Never posts free text, local reviews, or your own PRs. |
 | `review_list` | live | Saved and in-progress PR reviews with their `jobId`s. |
 
 **Posting key.** `review_post` writes to GitHub, so it needs a second secret on top of the bridge token. Generate one in Dev Studio → Settings → MCP Server → Posting key, then add it only to the clients that may post:
