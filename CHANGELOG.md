@@ -8,6 +8,16 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.5.0]
+
+### Added
+- **See which reviews are posted, from the list.** Each reviewed PR shows "3 to post", "1 of 3 posted" or "3 comments posted", so you know where comments are still waiting without opening the review. Your own PRs show nothing (comments are never posted there). The chip updates when a posting run ends.
+- **GitHub labels on every PR row.** Up to three labels, in their GitHub colour; click one to show only PRs with that label. Search also matches label names.
+- **Review filter:** Not reviewed, Issues to fix, Needs a device check, Comments to post, Comments posted, New commits since review, Looks good, each with a count.
+- **Label filter**, listing the labels in view with counts.
+- **Sort:** Recently updated, Least recently updated, Most issues first, Not reviewed first, Largest or smallest change.
+- Filter and sort choices are remembered; **Clear filters** resets them.
+
 ## [1.4.9]
 
 ### Fixed
@@ -217,7 +227,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.9...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.9...v1.5.0
 [1.4.9]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.8...v1.4.9
 [1.4.8]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.6...v1.4.7
