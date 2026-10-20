@@ -55,6 +55,8 @@ export interface ReviewSummary {
   lostLenses?: string[];
   /** Why a needed device check did not run ('no device' when none was reachable or set up). */
   deviceSkipped?: string;
+  /** Comments the review drafted for GitHub, and how many of them are posted. */
+  posting?: { posted: number; postable: number };
 }
 
 interface StoredReview {
@@ -238,6 +240,18 @@ function readStored(projectId: string, repo: string, number: number): StoredRevi
   }
 }
 
+/** Postable comments (verified issues and device checks with text) and how many reached GitHub. */
+function postingCounts(stored: { projectId: string; repo: string; number: number; result: ReviewResult }): { posted: number; postable: number } {
+  let posted: Record<string, unknown> = {};
+  try {
+    posted = (JSON.parse(fs.readFileSync(resultPath(stored.projectId, stored.repo, stored.number).replace(/\.json$/, '__posting.json'), 'utf-8')) as { posted?: Record<string, unknown> }).posted ?? {};
+  } catch {
+    // Nothing posted yet.
+  }
+  const ids = stored.result.findings.filter((f) => (f.status === 'issue' || f.status === 'needs-device') && f.comment).map((f) => f.postId ?? f.id);
+  return { posted: ids.filter((id) => id in posted).length, postable: ids.length };
+}
+
 function summaryOfStored(stored: StoredReview): ReviewSummary {
   return {
     projectId: stored.projectId,
@@ -251,6 +265,7 @@ function summaryOfStored(stored: StoredReview): ReviewSummary {
     device: stored.device,
     lostLenses: stored.result.lostLenses,
     deviceSkipped: skippedReason(stored.result),
+    posting: postingCounts(stored),
   };
 }
 
@@ -439,7 +454,7 @@ function saveResult(job: Job, pr: { title: string; html_url: string }, result: R
   const file = resultPath(job.projectId, job.repo, job.number);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(stored, null, 2), 'utf-8');
-  update(job, { status: 'done', phase: undefined, detail: undefined, headSha: result.headSha, counts: result.counts, deviceRecommended: result.deviceRecommended, finishedAt: result.finishedAt, lostLenses: result.lostLenses, deviceSkipped: skippedReason(result) });
+  update(job, { status: 'done', phase: undefined, detail: undefined, headSha: result.headSha, counts: result.counts, deviceRecommended: result.deviceRecommended, finishedAt: result.finishedAt, lostLenses: result.lostLenses, deviceSkipped: skippedReason(result), posting: postingCounts({ projectId: job.projectId, repo: job.repo, number: job.number, result }) });
 }
 
 type Project = NonNullable<ReturnType<typeof getProjectRecord>>;

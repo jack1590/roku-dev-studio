@@ -407,3 +407,14 @@ details.prr-section > summary { cursor: pointer; }
 .prr-discussion { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-left: 3px solid var(--border-hover); background: var(--bg-tertiary); border-radius: 4px; font-size: 12px; }
 .prr-discussion-head { display: flex; align-items: center; gap: 8px; }
 .prr-discussion-last { margin: 0; white-space: pre-wrap; color: var(--text-secondary); }
+
+/* PR list: labels, second filter row */
+.prr-labels { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.prr-label { --label-color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--label-color) 55%, transparent); background: color-mix(in srgb, var(--label-color) 14%, transparent); color: var(--text-secondary); font-size: 11px; line-height: 16px; cursor: pointer; }
+.prr-label:hover { border-color: var(--label-color); color: var(--text-primary); }
+.prr-label-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--label-color); }
+.prr-label-more { font-size: 11px; }
+.prr-filterbar-wrap { display: flex; flex-direction: column; gap: 8px; }
+.prr-filterbar-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.prr-field-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.prr-field-inline .prr-select { min-width: 150px; }

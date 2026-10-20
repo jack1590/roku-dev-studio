@@ -175,6 +175,7 @@ const PR_PAGE_SIZE = 50;
 const PR_FIELDS = `
   number title url isDraft headRefName headRefOid baseRefName additions deletions updatedAt mergeable reviewDecision
   author { login }
+  labels(first: 10) { nodes { name color } }
   reviewRequests(first: 30) { nodes { requestedReviewer { __typename ... on User { login } } } }
   commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }`;
 
@@ -192,6 +193,7 @@ interface RawPr {
   mergeable: string;
   reviewDecision: string | null;
   author: { login: string } | null;
+  labels?: { nodes: { name: string; color: string }[] };
   reviewRequests: { nodes: { requestedReviewer: { __typename: string; login?: string } | null }[] };
   commits: { nodes: { commit: { statusCheckRollup: { state: string } | null } }[] };
 }
@@ -280,6 +282,7 @@ async function scanPullRequests(token: string, repos: string[]): Promise<PrScan>
           decision: toDecision(pr.reviewDecision),
           reviewRequested: requested,
           headSha: pr.headRefOid,
+          labels: (pr.labels?.nodes ?? []).map((l) => ({ name: l.name, color: l.color })),
         });
       }
     });

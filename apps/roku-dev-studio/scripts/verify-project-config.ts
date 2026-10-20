@@ -38,7 +38,7 @@ assert.equal(parseRepoList('acme/web').ok, false);
 const pr = (over: Partial<PullRequestItem> = {}): PullRequestItem => ({
   repo: 'acme/web', number: 7, title: 'Fix login', url: 'https://github.com/acme/web/pull/7', author: 'Dev', draft: false,
   head: 'feat/login', base: 'main', additions: 10, deletions: 2, updatedAt: '2026-01-01T00:00:00Z',
-  conflicts: false, checks: 'success', decision: 'none', reviewRequested: false, headSha: 'abc123', ...over,
+  conflicts: false, checks: 'success', decision: 'none', reviewRequested: false, headSha: 'abc123', labels: [], ...over,
 });
 
 assert.equal(prState(pr({ conflicts: true, decision: 'approved' })).label, 'Has conflicts');
@@ -64,6 +64,7 @@ assert.equal(matchesFilter(pr({ author: 'other', checks: 'failure' }), 'problems
 assert.equal(matchesFilter(pr(), 'all', 'dev'), true);
 
 assert.equal(matchesSearch(pr(), '#7'), true);
+assert.equal(matchesSearch(pr({ labels: [{ name: 'needs-qa', color: 'ff0000' }] }), 'needs-qa'), true, 'search matches a label');
 assert.equal(matchesSearch(pr(), 'LOGIN'), true);
 assert.equal(matchesSearch(pr(), 'feat/'), true);
 assert.equal(matchesSearch(pr(), 'nope'), false);
