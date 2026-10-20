@@ -8,6 +8,11 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.5.1]
+
+### Fixed
+- **Device checks failed at the build in the installed app.** Opened from Finder or the Dock, the app has no shell PATH, so the PR test build stopped at "npm: command not found". Device builds now use the login shell's PATH (nvm, Homebrew), read once per app run, the same way the Packager does.
+
 ## [1.5.0]
 
 ### Added
@@ -227,7 +232,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.9...v1.5.0
 [1.4.9]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.8...v1.4.9
 [1.4.8]: https://github.com/jack1590/roku-dev-studio/compare/v1.4.7...v1.4.8

@@ -57,6 +57,13 @@ async function loginShellPath(): Promise<{ bin?: string; PATH: string } | null> 
   }
 }
 
+let shellPathCache: Promise<string | undefined> | null = null;
+/** The login shell's PATH (npm, nvm, Homebrew), read once; undefined when the shell cannot be probed. */
+export function shellPath(): Promise<string | undefined> {
+  shellPathCache ??= loginShellPath().then((r) => r?.PATH || undefined);
+  return shellPathCache;
+}
+
 /** The roku-pkg-cli installed with the app, or null if it is missing. */
 function bundledCli(): { entry: string; version: string } | null {
   try {
