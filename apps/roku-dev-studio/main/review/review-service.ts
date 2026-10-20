@@ -20,6 +20,7 @@ import { isRelaySelfDevice } from '../sideload-relay/fake-device-info';
 import { setupPostingHandlers } from './review-posting';
 import { loadDismissals, setupDismissalHandlers } from './review-dismissals';
 import { busyLabel, tryClaim } from '../../shared/device-claims';
+import { shellPath } from '../packager/cli';
 
 const fs = require('fs');
 const path = require('path');
@@ -495,6 +496,7 @@ async function deviceStep(job: Job, project: Project, worktree: string, result: 
       envFiles,
       device: { name: device.name, ip: device.ip, password },
       dataDir,
+      shellPath: await shellPath(),
       findings: result.findings,
       deadline: Date.now() + minutes * 60_000,
       signal: job.controller.signal,

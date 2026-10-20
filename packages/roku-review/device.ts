@@ -98,6 +98,8 @@ export interface DeviceRunInput {
   envFiles: Record<string, Record<string, string>>;
   device: { name: string; ip: string; password: string };
   dataDir: string;
+  /** PATH for the build commands. The app started from Finder or the Dock lacks the shell's PATH (npm, nvm), so the caller passes the login shell's. */
+  shellPath?: string;
   findings: ReviewFinding[];
   deadline: number;
   signal?: AbortSignal;
@@ -267,7 +269,7 @@ export async function runDeviceVerification(input: DeviceRunInput): Promise<{ re
   let redact = makeRedactor(secrets);
   const buildDir = path.join(input.dataDir, 'builds', `${slug(input.repo)}__pr${input.prNumber}`);
   const envVars = Object.assign({}, ...Object.values(input.envFiles));
-  const env: NodeJS.ProcessEnv = { ...process.env, ...envVars, ROKU_IP: input.device.ip, ROKU_DEV_PASSWORD: input.device.password, ROKU_DEV_USERNAME: 'rokudev', CI: '1' };
+  const env: NodeJS.ProcessEnv = { ...process.env, ...(input.shellPath ? { PATH: input.shellPath } : {}), ...envVars, ROKU_IP: input.device.ip, ROKU_DEV_PASSWORD: input.device.password, ROKU_DEV_USERNAME: 'rokudev', CI: '1' };
   const round: DeviceRound = { index: 1, goal: `Run the PR tests that exercise ${pending.length} finding(s)`, tests, build: 'skipped', sideload: 'skipped', console: '', outcomes: [] };
   report.rounds.push(round);
 
