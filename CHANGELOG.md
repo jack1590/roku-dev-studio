@@ -8,6 +8,11 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.6.1]
+
+### Changed
+- **Reviewers check that a fix's test drives the real entry point.** A test added or changed for a fix has to call the public function, handler or event path a caller uses, not only a helper underneath it; otherwise it would still pass if the entry point regressed. Generic, for any repository.
+
 ## [1.6.0]
 
 ### Added
@@ -247,7 +252,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.0...v1.5.1
