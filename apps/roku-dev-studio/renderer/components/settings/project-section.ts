@@ -7,7 +7,7 @@
  * learns whether a token exists.
  */
 
-import { MODEL_SLOTS, RECOMMENDED_MODELS, REVIEW_INSTRUCTIONS_MAX, REVIEW_LIMITS, WIKI_DEFAULTS, defaultCompanyTag } from '@shared/project-config.js';
+import { MODEL_SLOTS, RECOMMENDED_CLAUDE_MODELS, RECOMMENDED_MODELS, REVIEW_INSTRUCTIONS_MAX, REVIEW_LIMITS, WIKI_DEFAULTS, defaultCompanyTag } from '@shared/project-config.js';
 import type { ModelSlotId } from '@shared/project-config.js';
 
 type ProjectTokenService = 'github' | 'cursor' | 'jira' | 'figma';
@@ -19,6 +19,7 @@ interface ProjectItem {
   jiraSite?: string;
   jiraEmail?: string;
   figmaTestUrl?: string;
+  engine?: 'cursor' | 'claude';
   models?: Partial<Record<ModelSlotId, string>>;
   reviewInstructions?: string;
   probeRounds?: number;
@@ -49,6 +50,9 @@ interface CursorModel {
 
 /** Unsaved edits to the AI review section, per project, so a re-render never drops them. */
 interface ReviewDraft {
+  engine?: 'cursor' | 'claude';
+  /** Fill in the recommended models once the newly chosen engine's list arrives. */
+  suggestOnLoad?: boolean;
   models?: Partial<Record<ModelSlotId, string>>;
   reviewInstructions?: string;
   probeRounds?: string;
@@ -544,6 +548,22 @@ async function previewWiki(project: ProjectItem): Promise<void> {
   render();
 }
 
+type Engine = 'cursor' | 'claude';
+const engineOf = (project: ProjectItem): Engine => reviewDrafts.get(project.id)?.engine ?? project.engine ?? 'cursor';
+const modelKey = (project: ProjectItem) => `${project.id}|${engineOf(project)}`;
+/** The Claude engine needs no key; Cursor needs the project's Cursor key. */
+const engineReady = (project: ProjectItem) => engineOf(project) === 'claude' || !!project.tokens.cursor;
+
+interface ClaudeStatus { installed: boolean; version?: string; loggedIn?: boolean; method?: string; error?: string }
+let claudeState: { loading: boolean; status?: ClaudeStatus } | null = null;
+async function checkClaude(): Promise<void> {
+  claudeState = { loading: true, status: claudeState?.status };
+  render();
+  const res = await api.projectsClaudeStatus();
+  claudeState = { loading: false, status: res?.success ? res.status : { installed: false, error: 'Could not check Claude Code.' } };
+  render();
+}
+
 /** Family fallback when none of the recommended ids exist, newest version first. */
 const SLOT_FALLBACK: Partial<Record<ModelSlotId, RegExp>> = {
   reviewer1: /^gpt-\d/i,
@@ -553,32 +573,36 @@ const SLOT_FALLBACK: Partial<Record<ModelSlotId, RegExp>> = {
   fixer: /opus/i,
 };
 
-function recommendedModel(slot: ModelSlotId, models: CursorModel[]): string | undefined {
+function recommendedModel(slot: ModelSlotId, models: CursorModel[], engine: Engine = 'cursor'): string | undefined {
   const ids = new Set(models.map((m) => m.id));
-  const exact = RECOMMENDED_MODELS[slot].find((id) => ids.has(id));
+  const exact = (engine === 'claude' ? RECOMMENDED_CLAUDE_MODELS : RECOMMENDED_MODELS)[slot].find((id) => ids.has(id));
   if (exact) return exact;
+  if (engine === 'claude') return undefined;
   const pattern = SLOT_FALLBACK[slot];
   if (!pattern) return undefined;
   return models.filter((m) => pattern.test(m.id)).sort((x, y) => y.id.localeCompare(x.id, undefined, { numeric: true }))[0]?.id;
 }
 
-function suggestModels(models: CursorModel[]): Partial<Record<ModelSlotId, string>> {
+function suggestModels(models: CursorModel[], engine: Engine = 'cursor'): Partial<Record<ModelSlotId, string>> {
   const picks: Partial<Record<ModelSlotId, string>> = {};
   for (const slot of MODEL_SLOTS) {
-    const id = recommendedModel(slot.id, models);
+    const id = recommendedModel(slot.id, models, engine);
     if (id) picks[slot.id] = id;
   }
   return picks;
 }
 
 async function loadModels(project: ProjectItem): Promise<void> {
-  modelCache.set(project.id, { loading: true });
-  const res = await api.projectsListModels(project.id);
+  const key = modelKey(project);
+  const engine = engineOf(project);
+  modelCache.set(key, { loading: true });
+  const res = await api.projectsListModels(project.id, engine);
   const entry = res?.success ? { loading: false, models: res.models as CursorModel[] } : { loading: false, error: res?.error || 'Could not load models.' };
-  modelCache.set(project.id, entry);
-  // Nothing saved yet: pre-fill suggestions so the user only has to review and save.
-  if (entry.models && !Object.keys(project.models ?? {}).length && !reviewDrafts.get(project.id)?.models) {
-    reviewDrafts.set(project.id, { ...reviewDrafts.get(project.id), models: suggestModels(entry.models), suggested: true });
+  modelCache.set(key, entry);
+  const draft = reviewDrafts.get(project.id);
+  // Nothing saved yet, or the engine was just switched: pre-fill suggestions to review and save.
+  if (entry.models && (draft?.suggestOnLoad || (!Object.keys(project.models ?? {}).length && !draft?.models))) {
+    reviewDrafts.set(project.id, { ...draft, suggestOnLoad: false, models: suggestModels(entry.models, engine), suggested: true });
   }
   render();
 }
@@ -587,6 +611,7 @@ async function saveReview(project: ProjectItem): Promise<void> {
   const draft = reviewDrafts.get(project.id) ?? {};
   const res = await api.projectsSetReview({
     id: project.id,
+    engine: engineOf(project),
     models: { ...(project.models ?? {}), ...(draft.models ?? {}) },
     reviewInstructions: draft.reviewInstructions ?? project.reviewInstructions ?? '',
     ...wikiValues(project),
@@ -878,7 +903,7 @@ function unsavedTabs(project: ProjectItem): ProjectTab[] {
   const d = reviewDrafts.get(project.id);
   if (!d) return [];
   const tabs: ProjectTab[] = [];
-  if (d.models !== undefined || d.reviewInstructions !== undefined || d.incrementalReview !== undefined) tabs.push('review');
+  if (d.engine !== undefined || d.models !== undefined || d.reviewInstructions !== undefined || d.incrementalReview !== undefined) tabs.push('review');
   if (d.wikiEnabled !== undefined || d.wikiDir !== undefined || d.wikiTags !== undefined || d.wikiCompanyTag !== undefined) tabs.push('knowledge');
   if (d.probeRounds !== undefined || d.deviceMinutes !== undefined) tabs.push('device');
   return tabs;
@@ -911,10 +936,21 @@ function renderSaveBar(project: ProjectItem): HTMLElement {
   ]);
 }
 
+function renderEngineSwitch(engine: Engine): HTMLElement {
+  const btn = (id: Engine, label: string, hint: string) =>
+    h('button', { type: 'button', class: `projects-seg-btn${engine === id ? ' active' : ''}`, 'data-action': 'set-engine', 'data-engine': id, 'aria-pressed': String(engine === id), title: hint }, [label]);
+  return h('div', { class: 'projects-seg', role: 'group', 'aria-label': 'Review engine' }, [
+    btn('cursor', 'Cursor', 'Agents run on Cursor with the project’s Cursor API key.'),
+    btn('claude', 'Claude Code', 'Agents run on your Claude Code CLI with your Claude plan login. No API key.'),
+  ]);
+}
+
 function renderReviewTab(project: ProjectItem): HTMLElement {
   const draft = reviewDrafts.get(project.id) ?? {};
-  const cache = modelCache.get(project.id);
-  if (project.tokens.cursor && !cache) void loadModels(project);
+  const engine = engineOf(project);
+  const cache = modelCache.get(modelKey(project));
+  if (engineReady(project) && !cache) void loadModels(project);
+  if (engine === 'claude' && !claudeState) void checkClaude();
   const models = cache?.models ?? [];
   const chosen = { ...(project.models ?? {}), ...(draft.models ?? {}) };
 
@@ -927,8 +963,8 @@ function renderReviewTab(project: ProjectItem): HTMLElement {
       ...models.map((m) => h('option', { value: m.id, ...(m.description ? { title: m.description } : {}) }, [m.label])),
     ]) as HTMLSelectElement;
     select.value = value;
-    select.disabled = !project.tokens.cursor || !!cache?.loading;
-    const recommended = recommendedModel(slot.id, models);
+    select.disabled = !engineReady(project) || !!cache?.loading;
+    const recommended = recommendedModel(slot.id, models, engine);
     const recommendedLabel = recommended ? models.find((m) => m.id === recommended)?.label ?? recommended : null;
     const note =
       slot.id === 'builder'
@@ -950,7 +986,23 @@ function renderReviewTab(project: ProjectItem): HTMLElement {
   useRecommended.toggleAttribute('disabled', !models.length);
 
   let modelNotice: HTMLElement | null = null;
-  if (!project.tokens.cursor)
+  if (engine === 'claude') {
+    const st = claudeState?.status;
+    const line = claudeState?.loading
+      ? 'Checking Claude Code…'
+      : !st
+        ? ''
+        : !st.installed
+          ? 'Claude Code was not found. Install it, run `claude` once to sign in, then check again.'
+          : !st.loggedIn
+            ? `Claude Code ${st.version ?? ''} is installed but not signed in. Run \`claude\` once to sign in, then check again.`
+            : `Claude Code ${st.version ?? ''}, signed in${st.method === 'claude.ai' ? ' with your Claude plan' : ''}. Reviews count against your plan's usage limits (about 2M tokens per review).`;
+    const ok = !!st?.installed && !!st.loggedIn;
+    modelNotice = h('div', { class: `projects-callout${ok || claudeState?.loading ? '' : ' projects-callout-error'}`, role: 'status' }, [
+      h('p', {}, [line]),
+      h('button', { type: 'button', class: 'btn btn-secondary btn-sm', 'data-action': 'check-claude' }, ['Check again']),
+    ]);
+  } else if (!project.tokens.cursor)
     modelNotice = h('div', { class: 'projects-callout' }, [
       h('p', {}, ['Add a Cursor API key to choose models.']),
       h('button', { type: 'button', class: 'btn btn-secondary btn-sm', 'data-action': 'select-project-tab', 'data-tab': 'connections' }, ['Go to Connections']),
@@ -982,7 +1034,7 @@ function renderReviewTab(project: ProjectItem): HTMLElement {
   return h('div', { class: 'projects-tabpanel', role: 'tabpanel' }, [
     h('section', { class: 'projects-group' }, [
       h('div', { class: 'projects-group-head' }, [
-        h('div', {}, [h('h4', { class: 'projects-group-title' }, ['Models']), h('p', { class: 'projects-hint' }, ['Three reviewers read the PR in parallel, one lens each. The judge keeps what the code proves and sends the rest to a device check.'])]),
+        h('div', {}, [h('h4', { class: 'projects-group-title' }, ['Models']), renderEngineSwitch(engine), h('p', { class: 'projects-hint' }, ['Three reviewers read the PR in parallel, one lens each. The judge keeps what the code proves and sends the rest to a device check.'])]),
         useRecommended,
       ]),
       ...(modelNotice ? [modelNotice] : []),
@@ -1034,7 +1086,9 @@ function setupSteps(project: ProjectItem): { label: string; done: boolean; tab: 
   const approved = repos.filter((r) => project.builds?.[r]?.approvedAt && project.builds?.[r]?.testCommand).length;
   return [
     { label: 'GitHub token', done: project.tokens.github, tab: 'connections' },
-    { label: 'Cursor API key', done: !!project.tokens.cursor, tab: 'connections' },
+    (project.engine ?? 'cursor') === 'claude'
+      ? { label: 'Claude Code signed in', done: !!claudeState?.status?.loggedIn, tab: 'review' as ProjectTab }
+      : { label: 'Cursor API key', done: !!project.tokens.cursor, tab: 'connections' as ProjectTab },
     { label: 'Review models', done: !!m.judge && !!(m.reviewer1 || m.reviewer2 || m.reviewer3), tab: 'review' },
     { label: repos.length ? `Test builds ${approved}/${repos.length}` : 'Test builds', done: repos.length > 0 && approved === repos.length, tab: 'device', optional: true },
   ];
@@ -1428,15 +1482,25 @@ function wireEvents(): void {
         reviewStatus.delete(project.id);
         render();
       })();
+    } else if (action === 'set-engine' && project) {
+      const next = target.getAttribute('data-engine') === 'claude' ? 'claude' : 'cursor';
+      if (next !== engineOf(project)) {
+        // Models differ per engine: suggest the new engine's once its list loads.
+        reviewDrafts.set(project.id, { ...(reviewDrafts.get(project.id) ?? {}), engine: next, models: undefined, suggested: false, suggestOnLoad: true });
+        reviewStatus.delete(project.id);
+        render();
+      }
+    } else if (action === 'check-claude') {
+      void checkClaude();
     } else if (action === 'use-recommended-models' && project) {
-      const models = modelCache.get(project.id)?.models ?? [];
-      reviewDrafts.set(project.id, { ...(reviewDrafts.get(project.id) ?? {}), models: suggestModels(models), suggested: true });
+      const models = modelCache.get(modelKey(project))?.models ?? [];
+      reviewDrafts.set(project.id, { ...(reviewDrafts.get(project.id) ?? {}), models: suggestModels(models, engineOf(project)), suggested: true });
       reviewStatus.delete(project.id);
       render();
     } else if (action === 'save-review' && project) {
       void saveReview(project);
     } else if (action === 'reload-models' && project) {
-      modelCache.delete(project.id);
+      modelCache.delete(modelKey(project));
       void loadModels(project);
     } else if (action === 'test-service' && project && service) {
       const status = target.closest('.projects-token-row')?.querySelector<HTMLElement>('.projects-token-status');

@@ -8,6 +8,15 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.7.0]
+
+### Added
+- **Claude Code engine for reviews.** Settings → Projects → AI review has an engine switch: **Cursor** (as before, with the project's Cursor API key) or **Claude Code**, which runs every agent (the three reviewers, the judge, the device-run ruling) through your local `claude` CLI and its Claude plan login. No API key.
+  - The agents are locked down the same way: read-only tools (Read, Grep, Glob), no MCP servers, none of your user/project/local settings (so personal hooks and plugins never reach a review), no saved sessions.
+  - The settings show whether Claude Code is installed and signed in, with **Check again**; the model pickers list Claude models (full ids: short aliases resolve to older models), and **Use recommended** picks Sonnet 5.5, Haiku 5.5 and Sonnet 5.5 as reviewers with Opus 5.5 as judge.
+  - Reviews count against your Claude plan's usage limits (about 2M tokens per review). The cost line shows the list price as "Claude plan usage"; a plan limit or a model the installed CLI does not support fails the review with that message instead of retrying (`claude update` when the CLI is too old for a model).
+  - Each review records its engine ("Engine: Claude Code" in What this review was checked against), so the two can be compared on the same PR. Local branch reviews use the project's engine too.
+
 ## [1.6.3]
 
 Same app as 1.6.2, which, like 1.6.1, was never published: GitHub never assigned their macOS build a runner. The release build now asks for macOS 15 instead of the moving `macos-latest`.
@@ -264,7 +273,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.3...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.3...v1.7.0
 [1.6.3]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.0...v1.6.1

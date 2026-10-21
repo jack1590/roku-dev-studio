@@ -9,7 +9,7 @@
  */
 
 import { createHash } from 'crypto';
-import { addCost, EMPTY_COST, extractJson, runReadOnlyAgent, type RunCost } from './agent';
+import { addCost, EMPTY_COST, extractJson, runReadOnlyAgent, type AgentBackend, type RunCost } from './agent';
 import { ciFindings, ciInfraFailures, type CiReport } from './ci';
 import type { TicketLookup } from './jira';
 import { judgePrompt, LENSES, reviewerPrompt, type LensId, type PromptContext } from './prompts';
@@ -98,6 +98,8 @@ export interface ReviewResult {
   usage?: RunCost;
   /** What the review was checked against, for the "checked against" card. */
   context: {
+    /** Which engine ran the agents (missing on reviews from before engines). */
+    engine?: 'cursor' | 'claude';
     standards: string[];
     wikiPages: string[];
     instructions: boolean;
@@ -113,6 +115,8 @@ export interface ReviewResult {
 
 export interface ReviewInput {
   apiKey: string;
+  /** Cursor (default) or Claude Code; see agent.ts. */
+  backend?: AgentBackend;
   models: { reviewer1?: string; reviewer2?: string; reviewer3?: string; judge?: string };
   ctx: PromptContext;
   worktree: string;
@@ -173,7 +177,7 @@ export function classify(f: { verdict: 'real' | 'dismissed'; needsDevice: boolea
 
 /** Errors a retry cannot fix: usage or spend limits, auth, a model that does not exist. */
 export function isPermanentFailure(error: string): boolean {
-  return /usage limit|spend limit|quota|unauthori[sz]ed|invalid api key|forbidden|model .*not (found|available)/i.test(error);
+  return /usage limit|spend limit|quota|unauthori[sz]ed|invalid api key|forbidden|model .*not (found|available)|does not support this model|not logged in|please run \/login|limit reached/i.test(error);
 }
 
 /**
@@ -232,7 +236,7 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
     let error = '';
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const run = await runReadOnlyAgent({ apiKey: input.apiKey, model, cwd: input.worktree, prompt: reviewerPrompt(input.ctx, lens), name: `RDS review ${input.ctx.repo}#${input.ctx.prNumber} (${lens})`, signal: input.signal });
+        const run = await runReadOnlyAgent({ ...input.backend, apiKey: input.apiKey, model, cwd: input.worktree, prompt: reviewerPrompt(input.ctx, lens), name: `RDS review ${input.ctx.repo}#${input.ctx.prNumber} (${lens})`, signal: input.signal });
         usage = run.usage ? addCost(usage ?? EMPTY_COST, run.usage) : usage;
         durationMs += run.durationMs;
         const findings = run.status === 'finished' ? parseReviewerFindings(run.text) : null;
@@ -261,6 +265,7 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
 
   input.onPhase?.('judging', 'judge verifying findings in the code');
   const judgeInput = {
+    ...input.backend,
     apiKey: input.apiKey,
     model: input.models.judge,
     cwd: input.worktree,
@@ -445,6 +450,7 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
       : {}),
     ...(input.previous ? { incremental: { sinceSha: input.previous.sinceSha, carried: input.previous.carry.length, rechecked: input.previous.recheck.length } } : {}),
     context: {
+      engine: input.backend?.engine ?? 'cursor',
       standards: input.ctx.standards.map((s) => s.path),
       wikiPages: input.wikiPages,
       instructions: !!input.ctx.instructions.trim(),

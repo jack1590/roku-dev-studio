@@ -14,6 +14,7 @@ import { applyDismissals, dismissalPromptBlock, matchDismissal, type Dismissal }
 import type { ReviewFinding } from './review';
 import { discussionPromptBlock, toThreads } from './discussion';
 import { clipDescription } from './prompts';
+import { claudeArgs, parseClaudeOutput, toAgentOutput } from './claude-cli';
 import { prepareLocalCheckout, removeLocalCheckout } from './git';
 import { execFileSync } from 'node:child_process';
 import { ciFindings, ciInfraFailures, ciPromptBlock, isCodeAnnotation } from './ci';
@@ -284,6 +285,29 @@ async function localCheckoutChecks(): Promise<void> {
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+}
+
+// Claude Code engine: read-only flags, result parsing past CLI notices, usage mapping, failures.
+{
+  const args = claudeArgs('claude-sonnet-5-5');
+  assert.deepEqual(args.slice(args.indexOf('--tools'), args.indexOf('--tools') + 2), ['--tools', 'Read,Grep,Glob'], 'read-only tools only');
+  assert.ok(args.includes('--strict-mcp-config') && args.includes('--no-session-persistence'));
+  assert.equal(args[args.indexOf('--setting-sources') + 1], '', 'no user/project/local settings (hooks, plugins)');
+  const out = '[claude-code:unrecognized_model] {"model":"claude-sonnet-5-5"}\n{"type":"result","is_error":false,"result":"{\\"findings\\":[]}","num_turns":4,"total_cost_usd":0.5,"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":300,"cache_creation_input_tokens":70}}';
+  const parsed = parseClaudeOutput(out);
+  assert.ok(parsed && parsed.type === 'result', 'skips the notice line');
+  const run = toAgentOutput('claude-sonnet-5-5', parsed, 1000, '');
+  assert.equal(run.status, 'finished');
+  assert.equal(run.text, '{"findings":[]}');
+  assert.equal(run.toolCalls, 3);
+  assert.equal(run.usage?.total, 400);
+  assert.equal(run.usage?.rawCents, 50);
+  assert.equal(run.usage?.chargedCents, 0, 'a Claude plan is not billed per run');
+  const failed = toAgentOutput('claude-opus-5-5', { type: 'result', is_error: true, result: 'API Error: 400 Claude Code 2.1.267 does not support this model; version 2.1.280 or newer is required' }, 10, '');
+  assert.equal(failed.status, 'error');
+  assert.ok(isPermanentFailure(failed.error ?? ''), 'unsupported model is not retried');
+  assert.ok(isPermanentFailure("You've hit your usage limit"), 'plan limit is not retried');
+  assert.equal(toAgentOutput('m', null, 1, 'boom\nnot logged in').status, 'error');
 }
 
 void buildChecks().then(deviceChecks).then(localCheckoutChecks).then(() => console.log('verify-review: ok'));

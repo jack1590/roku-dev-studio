@@ -18,6 +18,7 @@ import {
   parseProjectInput,
   parseRepoList,
   parseReviewSettings,
+  CLAUDE_MODELS,
   parseWikiSettings,
   parseBuildConfig,
   parseEnvBulk,
@@ -28,6 +29,7 @@ import {
   type ProjectTokenService,
 } from '../../shared/project-config';
 import type { ChecksState, PullRequestItem, ReviewDecision } from '../../shared/pr-list';
+import { claudeStatus } from '../review/claude-code';
 import { detectBuild, projectFolders, listCursorModels, listWikiTags, readWiki, selectWikiContext } from 'roku-dev-studio-review';
 import * as tokenStore from '../project-token-store';
 
@@ -536,9 +538,13 @@ function setupProjectHandlers(app: App): void {
     return { success: true, project: toListItem(next) };
   });
 
-  ipcMain.handle(IPC.ProjectsListModels, async (_event: IpcMainInvokeEvent, payload?: { id?: unknown }) => {
+  ipcMain.handle(IPC.ProjectsClaudeStatus, async () => ({ success: true, status: await claudeStatus() }));
+
+  ipcMain.handle(IPC.ProjectsListModels, async (_event: IpcMainInvokeEvent, payload?: { id?: unknown; engine?: unknown }) => {
     const project = findProject(payload?.id);
     if (!project) return { success: false, error: 'Project not found.' };
+    // The engine being edited may not be saved yet, so the caller says which one.
+    if ((payload?.engine ?? project.engine) === 'claude') return { success: true, models: CLAUDE_MODELS };
     const apiKey = tokenStore.getToken(project.id, 'cursor');
     if (!apiKey) return { success: false, error: 'Save a Cursor API key first.' };
     try {

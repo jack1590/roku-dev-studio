@@ -115,7 +115,8 @@ contextBridge.exposeInMainWorld('settingsApi', {
   projectsTest: (id: string, service: string) => ipcRenderer.invoke(IPC.ProjectsTest, { id, service }),
   projectsSetReview: (input: { id: string; models: Record<string, string>; reviewInstructions: string; probeRounds: number; deviceMinutes: number }) =>
     ipcRenderer.invoke(IPC.ProjectsSetReview, input),
-  projectsListModels: (id: string) => ipcRenderer.invoke(IPC.ProjectsListModels, { id }),
+  projectsListModels: (id: string, engine?: string) => ipcRenderer.invoke(IPC.ProjectsListModels, { id, engine }),
+  projectsClaudeStatus: () => ipcRenderer.invoke(IPC.ProjectsClaudeStatus),
   projectsWikiPreview: (input: { id: string; repo: string; wikiEnabled: boolean; wikiDir: string; wikiTags: string; wikiCompanyTag: string }) =>
     ipcRenderer.invoke(IPC.ProjectsWikiPreview, input),
   projectsWikiTags: (wikiDir: string) => ipcRenderer.invoke(IPC.ProjectsWikiTags, { wikiDir }),

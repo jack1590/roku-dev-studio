@@ -9,6 +9,7 @@
  *   the same branch re-checks the open findings and reviews only the new commits, like a PR re-review.
  */
 
+import { agentBackendFor } from './claude-code';
 import { budgetDiff, dismissalPromptBlock, fileInventory, lookupTicket, prepareLocalCheckout, readChangedFiles, readStandards, removeLocalCheckout, runReview, ticketPromptBlock, type ReviewResult } from 'roku-dev-studio-review';
 import { encodeJobId, parseGitHubRemote, resolveProject } from '../../shared/review-mcp';
 import { getProjectRecord, listProjectRecords } from '../ipc/project-handlers';
@@ -107,8 +108,7 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base?: stri
   const update = (patch: Partial<LocalSummary>) => Object.assign(job, patch);
   const project = getProjectRecord(job.projectId);
   if (!project) throw new Error('Project not found.');
-  const cursorKey = tokenStore.getToken(project.id, 'cursor');
-  if (!cursorKey) throw new Error('Save a Cursor API key for this project first.');
+  const { apiKey: cursorKey, backend } = await agentBackendFor(project);
 
   update({ detail: 'checking out the committed work' });
   const previous = readStoredLocal(job.projectId, job.repo, job.branch);
@@ -152,6 +152,7 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base?: stri
 
     const result = await runReview({
       apiKey: cursorKey,
+      backend,
       models: { reviewer1: project.models?.reviewer1, reviewer2: project.models?.reviewer2, reviewer3: project.models?.reviewer3, judge: project.models?.judge },
       ctx: {
         repo: job.repo,

@@ -11,13 +11,14 @@
 import type { App, IpcMainInvokeEvent } from 'electron';
 import { IPC } from '../../shared/ipc/channels';
 import { containsSecret, defaultCompanyTag } from '../../shared/project-config';
-import { addCost, EMPTY_COST, ciPromptBlock, discussionPromptBlock, fetchDiscussion, dismissalPromptBlock, fetchCi, lookupTicket, ticketPromptBlock, readChangedFiles, TEST_FILE, budgetDiff, fileInventory, prepareCheckout, readStandards, readWiki, renderWikiPromptBlock, runDeviceVerification, runReview, selectWikiContext, type DeviceReport, type ReviewResult } from 'roku-dev-studio-review';
+import { addCost, EMPTY_COST, ciPromptBlock, discussionPromptBlock, fetchDiscussion, dismissalPromptBlock, fetchCi, lookupTicket, ticketPromptBlock, readChangedFiles, TEST_FILE, budgetDiff, fileInventory, prepareCheckout, readStandards, readWiki, renderWikiPromptBlock, runDeviceVerification, runReview, selectWikiContext, type DeviceReport, type ReviewResult , type AgentBackend } from 'roku-dev-studio-review';
 import { REVIEW_LIMITS } from '../../shared/project-config';
 import { getProjectRecord, resolveHomePath } from '../ipc/project-handlers';
 import * as tokenStore from '../project-token-store';
 import { connectedDevices } from '../mcp-bridge';
 import { isRelaySelfDevice } from '../sideload-relay/fake-device-info';
 import { setupPostingHandlers } from './review-posting';
+import { agentBackendFor } from './claude-code';
 import { loadDismissals, setupDismissalHandlers } from './review-dismissals';
 import { busyLabel, tryClaim } from '../../shared/device-claims';
 import { shellPath } from '../packager/cli';
@@ -324,9 +325,8 @@ async function execute(job: Job): Promise<void> {
   const project = getProjectRecord(job.projectId);
   if (!project) throw new Error('Project not found.');
   const githubToken = tokenStore.getToken(project.id, 'github');
-  const cursorKey = tokenStore.getToken(project.id, 'cursor');
   if (!githubToken) throw new Error('Save a GitHub token for this project first.');
-  if (!cursorKey) throw new Error('Save a Cursor API key for this project first.');
+  const { apiKey: cursorKey, backend } = await agentBackendFor(project);
 
   update(job, { phase: 'preparing', detail: 'reading the PR from GitHub' });
   const pr = await githubJson<{ title: string; body: string | null; html_url: string; user: { login: string } | null; base: { ref: string }; head: { ref: string; sha: string } }>(githubToken, `/repos/${job.repo}/pulls/${job.number}`);
@@ -400,6 +400,7 @@ async function execute(job: Job): Promise<void> {
 
   const result = await runReview({
     apiKey: cursorKey,
+    backend,
     models: { reviewer1: project.models?.reviewer1, reviewer2: project.models?.reviewer2, reviewer3: project.models?.reviewer3, judge: project.models?.judge },
     ctx: ctxFor(budgeted, incremental?.sinceSha),
     worktree: checkout.worktree,
@@ -433,7 +434,7 @@ async function execute(job: Job): Promise<void> {
   const needsDevice = result.findings.some((f) => f.status === 'needs-device' && f.tests?.length);
   if (needsDevice) {
     // The device planner sees the whole PR, since carried findings may sit outside the new commits.
-    result.device = await deviceStep(job, project, checkout.worktree, result, ctxFor(full), cursorKey);
+    result.device = await deviceStep(job, project, checkout.worktree, result, ctxFor(full), cursorKey, backend);
     result.usage = addCost(result.usage ?? EMPTY_COST, result.device.usage);
   }
 
@@ -466,7 +467,7 @@ export async function wikiContext(project: Project, repo: string, changedFiles: 
 }
 
 /** Run (or explain why not) the device verification on a free pool device. Mutates result findings/counts. */
-async function deviceStep(job: Job, project: Project, worktree: string, result: ReviewResult, ctx: Parameters<typeof runDeviceVerification>[0]['ctx'], cursorKey: string): Promise<DeviceReport> {
+async function deviceStep(job: Job, project: Project, worktree: string, result: ReviewResult, ctx: Parameters<typeof runDeviceVerification>[0]['ctx'], cursorKey: string, backend: AgentBackend): Promise<DeviceReport> {
   const blocked = (reason: string): DeviceReport => ({ status: 'blocked', reason, rounds: [] });
   const build = project.builds?.[job.repo];
   if (!build?.approvedAt || !build.testCommand) return blocked(`The test build for ${job.repo} is not set up yet. Open Settings → Projects → Device testing, approve its test build, then re-review.`);
@@ -492,6 +493,7 @@ async function deviceStep(job: Job, project: Project, worktree: string, result: 
     const minutes = project.deviceMinutes ?? REVIEW_LIMITS.deviceMinutes.default;
     const { report, findings } = await runDeviceVerification({
       apiKey: cursorKey,
+      backend,
       judgeModel: project.models?.judge ?? '',
       ctx,
       worktree,

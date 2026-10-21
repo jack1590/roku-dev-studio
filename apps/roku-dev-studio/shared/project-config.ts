@@ -23,7 +23,9 @@ export interface ProjectRecord {
   figmaTestUrl?: string;
   /** Repos whose PRs are reviewed, as "owner/name", from any owner the token can see. */
   repos?: string[];
-  /** Cursor model id per review role. Missing or empty = not chosen yet. */
+  /** Which agent engine runs reviews: Cursor (API key) or Claude Code (the signed-in Claude plan). Default cursor. */
+  engine?: ReviewEngine;
+  /** Model id per review role, for the chosen engine. Missing or empty = not chosen yet. */
   models?: Partial<Record<ModelSlotId, string>>;
   /** Team rules added to every review prompt of this project. Never credentials. */
   reviewInstructions?: string;
@@ -184,6 +186,28 @@ export type ModelSlotId = (typeof MODEL_SLOTS)[number]['id'];
  * cost the most per kept finding, so Composer (Cursor's own, cheaper) takes that lens; a non-Claude
  * judge stalled once, Opus verifies best.
  */
+export type ReviewEngine = 'cursor' | 'claude';
+
+/** Models Claude Code can run, newest first. Full ids: short aliases (sonnet, opus) resolve to older models. */
+export const CLAUDE_MODELS: { id: string; label: string }[] = [
+  { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
+  { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
+  { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5' },
+  { id: 'claude-opus-5', label: 'Claude Opus 5' },
+  { id: 'claude-sonnet-5', label: 'Claude Sonnet 5' },
+  { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
+];
+
+/** Claude Code engine: same roles, Claude models only. */
+export const RECOMMENDED_CLAUDE_MODELS: Record<ModelSlotId, string[]> = {
+  reviewer1: ['claude-sonnet-5-5', 'claude-sonnet-5'],
+  reviewer2: ['claude-haiku-5-5', 'claude-haiku-4-5'],
+  reviewer3: ['claude-sonnet-5-5', 'claude-sonnet-5'],
+  judge: ['claude-opus-5-5', 'claude-opus-5'],
+  fixer: ['claude-opus-5-5', 'claude-opus-5'],
+  builder: [],
+};
+
 export const RECOMMENDED_MODELS: Record<ModelSlotId, string[]> = {
   // Correctness lens: gpt-5.5 raised nothing in 25 of 40 reviews; Sonnet finds far more.
   reviewer1: ['claude-sonnet-5-5', 'claude-sonnet-5', 'gpt-5.5', 'gpt-5.4'],
@@ -217,6 +241,7 @@ export function containsSecret(text: string): boolean {
 }
 
 export interface ReviewSettings {
+  engine: ReviewEngine;
   models: Partial<Record<ModelSlotId, string>>;
   reviewInstructions: string;
   probeRounds: number;
@@ -282,10 +307,11 @@ export function parseReviewSettings(raw: unknown): { ok: true; settings: ReviewS
   if (deviceMinutes === null) return { ok: false, error: `Device time must be ${REVIEW_LIMITS.deviceMinutes.min}–${REVIEW_LIMITS.deviceMinutes.max} minutes.` };
 
   const incrementalReview = typeof input.incrementalReview === 'boolean' ? input.incrementalReview : true;
+  const engine: ReviewEngine = input.engine === 'claude' ? 'claude' : 'cursor';
 
   const wiki = parseWikiSettings(input);
   if (!wiki.ok) return wiki;
-  return { ok: true, settings: { models, reviewInstructions, probeRounds, deviceMinutes, incrementalReview, wikiEnabled: wiki.wikiEnabled, wikiDir: wiki.wikiDir, wikiTags: wiki.wikiTags, wikiCompanyTag: wiki.wikiCompanyTag } };
+  return { ok: true, settings: { engine, models, reviewInstructions, probeRounds, deviceMinutes, incrementalReview, wikiEnabled: wiki.wikiEnabled, wikiDir: wiki.wikiDir, wikiTags: wiki.wikiTags, wikiCompanyTag: wiki.wikiCompanyTag } };
 }
 
 const REPO_FULL_NAME_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;

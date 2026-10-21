@@ -1546,3 +1546,10 @@ body.privacy-mode .info-value[data-privacy="mask"]:hover {
   flex-basis: 100%;
   margin: 0;
 }
+
+/* Review engine switch (Cursor | Claude Code) */
+.projects-seg { display: inline-flex; margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.projects-seg-btn { padding: 5px 12px; border: 0; background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+.projects-seg-btn + .projects-seg-btn { border-left: 1px solid var(--border); }
+.projects-seg-btn.active { background: var(--accent-purple-dim); color: var(--text-primary); font-weight: 600; }
+.projects-seg-btn:focus-visible { outline: 2px solid var(--accent-purple); outline-offset: -2px; }

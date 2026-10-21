@@ -650,6 +650,8 @@ export const IPC = {
   ProjectsSetReview: 'projects:set-review',
   /** Settings → Projects: Cursor models available to the project's Cursor key (ids and labels only). */
   ProjectsListModels: 'projects:list-models',
+  /** Settings → AI review: whether Claude Code is installed and signed in (no credentials returned). */
+  ProjectsClaudeStatus: 'projects:claude-status',
   /** Settings → Projects: which LLM Wiki pages a review of a repo would get (titles and reasons only). */
   ProjectsWikiPreview: 'projects:wiki-preview',
   /** Settings → Projects: tags used in the LLM Wiki, with page counts, for the tag picker. */
