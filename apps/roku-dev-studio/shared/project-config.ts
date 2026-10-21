@@ -185,7 +185,8 @@ export type ModelSlotId = (typeof MODEL_SLOTS)[number]['id'];
  * judge stalled once, Opus verifies best.
  */
 export const RECOMMENDED_MODELS: Record<ModelSlotId, string[]> = {
-  reviewer1: ['gpt-5.5', 'gpt-5.4', 'gpt-5.2', 'gpt-5.1'],
+  // Correctness lens: gpt-5.5 raised nothing in 25 of 40 reviews; Sonnet finds far more.
+  reviewer1: ['claude-sonnet-5-5', 'claude-sonnet-5', 'gpt-5.5', 'gpt-5.4'],
   reviewer2: ['composer-2.5', 'composer-2', 'gemini-3.1-pro'],
   reviewer3: ['claude-sonnet-5-5', 'claude-sonnet-5', 'claude-sonnet-4-6'],
   judge: ['claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8'],
