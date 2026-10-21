@@ -73,10 +73,11 @@ const LOCATION = `Location: "file" is the repository-relative path exactly as th
 const FOCUS = `Work from the diff. Open a file only to check a specific suspicion: the changed files, and the callers or callees of what changed. Do not survey the repository or read files unrelated to the change. Batch lookups (one grep for several names) instead of many single searches. Stop once your lens has nothing more to find in this change.`;
 
 /** Checks every reviewer runs whatever its lens: generic, so they apply to any repository. */
-const ALWAYS_CHECK = `Whatever your lens, also check these three, and only for what this change adds or alters:
+const ALWAYS_CHECK = `Whatever your lens, also check these four, and only for what this change adds or alters:
 - Wiring: for each new or changed entry point (event, message, command, route, handler, public function, config key), find who emits or calls it and under which feature flags, config gates or preconditions. If the new code relies on a gate or another component being active, check that the flag's own dependency rules (validators, defaults, docs) guarantee it.
 - Docs the repo keeps: if the repository documents what this change adds or changes (contract or API docs, registries or lists of types, changelogs, READMEs, schema files), check those were updated to match.
-- Comments: check that code comments the change adds or touches refer to things that exist, with their real names, and still describe what the code does.`;
+- Comments: check that code comments the change adds or touches refer to things that exist, with their real names, and still describe what the code does.
+- Tests for a fix: a test added or changed to cover a fix must drive the real entry point the fix protects (the public function, handler or event path a caller uses), not only a helper it calls; otherwise it passes even if the entry point regresses. Say which entry point it should call.`;
 
 const NOISE = `Do not report: style or formatting preferences that no repository rule requires, restatements of what the diff obviously does, praise, or the same problem twice.`;
 
