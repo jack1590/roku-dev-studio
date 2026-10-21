@@ -39,7 +39,8 @@ jobs:
       matrix:
         include:
           - label: macOS
-            os: macos-latest
+            # Pinned: macos-latest went unassigned for 15 minutes (job cancelled) on v1.6.1 and v1.6.2.
+            os: macos-15
             build-cmd: build:mac
             artifact-name: mac-builds
             artifact-paths: |

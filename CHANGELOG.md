@@ -8,6 +8,10 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.6.3]
+
+Same app as 1.6.2, which, like 1.6.1, was never published: GitHub never assigned their macOS build a runner. The release build now asks for macOS 15 instead of the moving `macos-latest`.
+
 ## [1.6.2]
 
 ### Changed
@@ -260,7 +264,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.2...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.3...HEAD
+[1.6.3]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.2...v1.6.0
