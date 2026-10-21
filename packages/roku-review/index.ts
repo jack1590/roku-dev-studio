@@ -16,6 +16,7 @@ export * from './wiki';
 export * from './diff';
 export * from './git';
 export * from './agent';
+export * from './claude-cli';
 export * from './ci';
 export * from './jira';
 export * from './discussion';

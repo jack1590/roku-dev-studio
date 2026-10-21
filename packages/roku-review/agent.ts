@@ -8,10 +8,20 @@
 
 import { Agent } from '@cursor/sdk';
 import { estimateCents } from './pricing';
+import { runClaudeAgent, type ClaudeCli } from './claude-cli';
+
+/** Which agent runs a review: Cursor (API key) or Claude Code (`claude -p`, the user's Claude plan). */
+export type AgentEngine = 'cursor' | 'claude';
+/** How every agent of a review runs. `claude` is required for the Claude engine. */
+export interface AgentBackend {
+  engine?: AgentEngine;
+  claude?: ClaudeCli;
+}
 
 export const READ_ONLY_TOOLS = ['read', 'grep', 'glob', 'ls', 'semSearch'] as const;
 
-export interface AgentRunInput {
+export interface AgentRunInput extends AgentBackend {
+  /** Cursor API key; unused with the Claude engine. */
   apiKey: string;
   model: string;
   cwd: string;
@@ -84,6 +94,10 @@ async function costOf(agent: { getUsage: () => Promise<{ cost?: { rawCostCents: 
 const DEFAULT_TIMEOUT_MS = 20 * 60 * 1000;
 
 export async function runReadOnlyAgent(input: AgentRunInput): Promise<AgentRunOutput> {
+  if (input.engine === 'claude') {
+    if (!input.claude) return { text: '', status: 'error', error: 'Claude Code is not set up on this machine.', durationMs: 0 };
+    return runClaudeAgent({ ...input, claude: input.claude });
+  }
   const started = Date.now();
   if (input.signal?.aborted) return { text: '', status: 'cancelled', durationMs: 0 };
   const agent = await Agent.create({

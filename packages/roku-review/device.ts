@@ -19,7 +19,7 @@ import { existsSync, promises as fs } from 'fs';
 import * as path from 'path';
 import type { Socket } from 'net';
 import { REVIEW_DIR } from './git';
-import { addCost, EMPTY_COST, extractJson, runReadOnlyAgent, type RunCost } from './agent';
+import { addCost, EMPTY_COST, extractJson, runReadOnlyAgent, type RunCost , type AgentBackend } from './agent';
 import type { PromptContext } from './prompts';
 import type { ReviewFinding } from './review';
 
@@ -86,6 +86,7 @@ export interface DeviceReport {
 
 export interface DeviceRunInput {
   apiKey: string;
+  backend?: AgentBackend;
   judgeModel: string;
   ctx: PromptContext;
   worktree: string;
@@ -351,7 +352,7 @@ export async function runDeviceVerification(input: DeviceRunInput): Promise<{ re
     round.console = redact(excerptConsole(consoleRaw));
 
     input.onProgress?.('judge reading the test results');
-    const rule = () => runReadOnlyAgent({ apiKey: input.apiKey, model: input.judgeModel, cwd: input.worktree, prompt: evidencePrompt(input, pending, round), name: `RDS device ruling ${input.repo}#${input.prNumber}`, signal: input.signal });
+    const rule = () => runReadOnlyAgent({ ...input.backend, apiKey: input.apiKey, model: input.judgeModel, cwd: input.worktree, prompt: evidencePrompt(input, pending, round), name: `RDS device ruling ${input.repo}#${input.prNumber}`, signal: input.signal });
     let ruling = await rule();
     let ruled = extractJson<{ summary?: unknown; outcomes?: unknown; newFindings?: unknown }>(ruling.text);
     report.usage = addCost(report.usage ?? EMPTY_COST, ruling.usage);

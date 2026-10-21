@@ -21,6 +21,7 @@ interface ProjectItem {
   name: string;
   repos?: string[];
   models?: Record<string, string>;
+  engine?: 'cursor' | 'claude';
   tokens: { github: boolean; cursor?: boolean; jira: boolean; figma: boolean };
 }
 
@@ -118,7 +119,9 @@ const formatTokens = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed
 const formatPrice = (u: RunCost) =>
   u.rawCents && !u.costMissing ? `≈ $${(u.rawCents / 100).toFixed(2)}` : u.estCents ? `est. $${(u.estCents / 100).toFixed(2)}` : u.rawCents ? `≥ $${(u.rawCents / 100).toFixed(2)}` : 'price not reported';
 
-function usageLine(u: RunCost): string {
+function usageLine(u: RunCost, engine?: 'cursor' | 'claude'): string {
+  // Claude Code reports list price; a Claude plan is not billed per review.
+  if (engine === 'claude') return `${formatTokens(u.total)} tokens · ${formatPrice(u)} at list price (Claude plan usage)`;
   const charged = !u.costMissing && Math.abs(u.chargedCents - u.rawCents) >= 1 ?` (charged $${(u.chargedCents / 100).toFixed(2)})` : '';
   return `${formatTokens(u.total)} tokens · ${formatPrice(u)}${charged}`;
 }
@@ -156,7 +159,7 @@ interface StoredReview {
     lostLenses?: string[];
     ci?: { checks: { name: string; state: string; url?: string; annotations: number }[]; infra: string[]; error?: string };
     incremental?: { sinceSha: string; carried: number; rechecked: number };
-    context: { standards: string[]; wikiPages: string[]; instructions: boolean; diffNotes: string[]; files: number; ticket?: { key: string; url: string; summary: string; type?: string; status?: string; foundIn: string; figmaLinks: string[] }; ticketNote?: string; discussion?: { threads: number; resolved: number; replies: number; error?: string } };
+    context: { standards: string[]; wikiPages: string[]; instructions: boolean; diffNotes: string[]; files: number; ticket?: { key: string; url: string; summary: string; type?: string; status?: string; foundIn: string; figmaLinks: string[] }; ticketNote?: string; engine?: 'cursor' | 'claude'; discussion?: { threads: number; resolved: number; replies: number; error?: string } };
   };
 }
 
@@ -338,7 +341,8 @@ function reviewFor(project: ProjectItem, pr: { repo: string; number: number }): 
 
 /** Why a review cannot start for this project, or null when it can. */
 function reviewBlocker(project: ProjectItem): string | null {
-  if (!project.tokens.cursor) return 'Add a Cursor API key in Settings → Projects to run reviews.';
+  // Claude Code needs no key here; the service checks the CLI and its login when the review starts.
+  if ((project.engine ?? 'cursor') === 'cursor' && !project.tokens.cursor) return 'Add a Cursor API key in Settings → Projects to run reviews.';
   const models = project.models ?? {};
   if (!models.judge || !(models.reviewer1 || models.reviewer2 || models.reviewer3)) return 'Choose review models in Settings → Projects → AI review.';
   return null;
@@ -1231,6 +1235,7 @@ function renderReviewDrawer(project: ProjectItem, view: NonNullable<typeof revie
           : `No ticket: correctness-only review${ctx.ticketNote ? ` (${ctx.ticketNote})` : ''}`,
       ]),
       ...(ctx.ticket?.figmaLinks.length ? [h('li', { class: 'prr-muted' }, [`Linked designs (not reviewed yet): ${ctx.ticket.figmaLinks.length}`])] : []),
+      h('li', {}, [`Engine: ${ctx.engine === 'claude' ? 'Claude Code (Claude plan)' : 'Cursor'}`]),
       h('li', {}, [`${ctx.files} changed file(s)`]),
       ...(ctx.discussion ? [h('li', ctx.discussion.error ? { class: 'prr-muted' } : {}, [ctx.discussion.error ? `PR discussion not read: ${ctx.discussion.error}` : ctx.discussion.threads ? `PR discussion: ${ctx.discussion.threads} thread(s), ${ctx.discussion.resolved} resolved, ${ctx.discussion.replies} with replies` : 'PR discussion: no comments yet'])] : []),
       h('li', {}, [ctx.standards.length ? `Repo standards: ${ctx.standards.join(', ')}` : 'No repo standards files found']),
@@ -1291,7 +1296,7 @@ function renderReviewDrawer(project: ProjectItem, view: NonNullable<typeof revie
     h('p', { class: 'prr-muted prr-review-meta' }, [
       `Reviewed ${timeAgo(new Date(result.finishedAt).toISOString())} at ${result.headSha.slice(0, 7)} · took ${Math.round((result.finishedAt - result.startedAt) / 1000)}s`,
       ...(result.incremental ? [` · only the new commits since ${result.incremental.sinceSha.slice(0, 7)} (${result.incremental.rechecked} earlier finding(s) re-checked, ${result.incremental.carried} carried over)`] : []),
-      ...(result.usage ? [h('span', { title: `Input ${formatTokens(result.usage.input)} · output ${formatTokens(result.usage.output)} · cache read ${formatTokens(result.usage.cacheRead)} · cache write ${formatTokens(result.usage.cacheWrite)}. Price is Cursor's list price for these tokens; "charged" is what your plan actually billed.` }, [` · ${usageLine(result.usage)}`])] : []),
+      ...(result.usage ? [h('span', { title: `Input ${formatTokens(result.usage.input)} · output ${formatTokens(result.usage.output)} · cache read ${formatTokens(result.usage.cacheRead)} · cache write ${formatTokens(result.usage.cacheWrite)}. ${result.context.engine === 'claude' ? 'Claude Code reports the list price of these tokens; on a Claude plan they count against usage limits instead of being billed.' : `Price is Cursor's list price for these tokens; "charged" is what your plan actually billed.`}` }, [` · ${usageLine(result.usage, result.context.engine)}`])] : []),
     ]),
     ...(outdated ? [h('div', { class: 'prr-note' }, ['New commits were pushed after this review. ', h('button', { type: 'button', class: 'prr-link-btn', 'data-action': 'start-review', 'data-repo': view.repo, 'data-number': String(view.number) }, ['Review the new commits'])])] : []),
   ]);
