@@ -8,6 +8,14 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.6.2]
+
+### Changed
+- **Recommended correctness reviewer is now Claude Sonnet 5.5.** In 40 reviews, gpt-5.5 on the correctness lens raised nothing in 25 and 21 findings in total, against over 100 for each other lens. "Use recommended" and new projects pick Sonnet; existing projects keep their choice until changed in Settings → Projects → AI review.
+- **Two more generic reviewer checks:**
+  - **Late listener:** when a change attaches a listener, observer or subscription later than before (deferred, lazy, after a gate), reviewers check what state the observed object can already be in, so missed early events or transitions are caught.
+  - **Default-path test:** when a change alters behaviour on the default path (flag off, or every session), a test must cover that path.
+
 ## [1.6.1]
 
 ### Changed
@@ -252,7 +260,8 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.2...HEAD
+[1.6.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.5.1...v1.5.2
