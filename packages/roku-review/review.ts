@@ -285,6 +285,8 @@ export async function runReview(input: ReviewInput): Promise<ReviewResult> {
     judgeRun = { ...judgeRun, usage: first.usage ? addCost(first.usage, judgeRun.usage) : judgeRun.usage, durationMs: first.durationMs + judgeRun.durationMs };
   }
   if (input.signal?.aborted) throw new Error('Review cancelled.');
+  // A judge that cannot run (old CLI, quota, auth) would fail every review the same way: fail loudly with the cause.
+  if (!judgeOk(judgeRun) && isPermanentFailure(judgeRun.error ?? '')) throw new Error(`The judge cannot run: ${judgeRun.error}`);
 
   const judged = judgeRun.status === 'finished' ? extractJson<{ summary?: unknown; reviewBody?: unknown; deviceRecommended?: unknown; deviceReason?: unknown; findings?: unknown }>(judgeRun.text) : null;
   agents.push({
