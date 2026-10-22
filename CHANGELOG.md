@@ -8,6 +8,11 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.7.1]
+
+### Fixed
+- **A judge that cannot run now fails the review.** When the judge hits an error a retry cannot fix (a model the installed `claude` CLI does not support, a plan limit, auth), the review shows **Review failed** with the error, for example "Claude Code 2.1.267 does not support this model; version 2.1.280 or newer is required" (run `claude update`). Before, the review finished with every finding demoted to unverified *noted*, which on a quiet PR read as an incomplete but otherwise clean review. A judge failure a retry might fix (a bad reply, a stalled run) still finishes with unverified findings, as before.
+
 ## [1.7.0]
 
 ### Added
