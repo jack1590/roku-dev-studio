@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { budgetDiff, fileInventory, splitDiff } from './diff';
 import { extractJson } from './agent';
-import { classify, isPermanentFailure, mergeFindings } from './review';
+import { classify, isPermanentFailure, mergeFindings, runReview } from './review';
 import { estimateCents } from './pricing';
 import { adfToText, ticketKeyCandidates } from './jira';
 import { detectBuild, parseJsonc, projectFolders } from './build-detect';
@@ -310,4 +310,33 @@ async function localCheckoutChecks(): Promise<void> {
   assert.equal(toAgentOutput('m', null, 1, 'boom\nnot logged in').status, 'error');
 }
 
-void buildChecks().then(deviceChecks).then(localCheckoutChecks).then(() => console.log('verify-review: ok'));
+// A judge that cannot run at all (old CLI, quota, auth) fails the review instead of passing it off
+// as done with every finding unverified. Drives runReview through a fake `claude` binary.
+async function judgeFailureChecks(): Promise<void> {
+  const root = mkdtempSync(join(tmpdir(), 'rds-judge-'));
+  try {
+    const bin = join(root, 'claude');
+    const result = (o: object) => JSON.stringify({ type: 'result', num_turns: 1, ...o });
+    writeFileSync(
+      bin,
+      `#!/bin/sh\ncat >/dev/null\ncase "$*" in\n  *judge-model*) echo '${result({ is_error: true, result: 'API Error: 400 Claude Code 2.1.267 does not support this model; version 2.1.280 or newer is required.' })}' ;;\n  *) echo '${result({ is_error: false, result: '{"findings":[{"title":"t","file":"a.brs","line":1,"severity":"major"}]}' })}' ;;\nesac\n`,
+      { mode: 0o755 },
+    );
+    const run = (judgeError?: string) =>
+      runReview({
+        apiKey: '',
+        backend: { engine: 'claude', claude: { bin, env: process.env } },
+        models: { reviewer1: 'rev-model', judge: judgeError ?? 'judge-model' },
+        ctx: { repo: 'o/r', prNumber: 1, title: '', body: '', author: '', baseRef: 'main', headRef: 'f', inventory: '', diffNotes: [], diff: '', standards: [], wikiBlock: '', instructions: '' },
+        worktree: root,
+        headSha: 'abc',
+        changedFiles: ['a.brs'],
+        wikiPages: [],
+      });
+    await assert.rejects(run(), /judge cannot run.*does not support this model/i, 'a permanent judge failure fails the review');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+void buildChecks().then(deviceChecks).then(localCheckoutChecks).then(judgeFailureChecks).then(() => console.log('verify-review: ok'));
