@@ -18,7 +18,7 @@ import { claudeArgs, parseClaudeOutput, toAgentOutput } from './claude-cli';
 import { prepareLocalCheckout, removeLocalCheckout } from './git';
 import { execFileSync } from 'node:child_process';
 import { ciFindings, ciInfraFailures, ciPromptBlock, isCodeAnnotation } from './ci';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -268,6 +268,102 @@ async function localCheckoutChecks(): Promise<void> {
     assert.equal((await prepareLocalCheckout({ path: work, base: 'main', dataDir })).baseRef, 'main');
     await removeLocalCheckout(co2.worktree);
     assert.equal(existsSync(co2.worktree), false);
+
+    // The true base: fetched into the review copy, whatever state the user's own refs are in.
+    const up = join(root, 'stale');
+    const upstream = join(root, 'upstream.git');
+    g(root, 'init', '-q', '--bare', '-b', 'main', upstream);
+    g(root, 'clone', '-q', upstream, up);
+    g(up, 'checkout', '-q', '-b', 'develop');
+    commit(up, 'base1.brs', '1\n');
+    g(up, 'push', '-q', 'origin', 'develop');
+    const staleRef = g(up, 'rev-parse', 'refs/remotes/origin/develop');
+    const fresher = join(root, 'fresher');
+    g(root, 'clone', '-q', '-b', 'develop', upstream, fresher);
+    commit(fresher, 'moved.brs', 'moved on\n');
+    g(fresher, 'push', '-q', 'origin', 'develop');
+    // The user's branch merged the newer base, while their origin/develop never moved.
+    g(up, 'remote', 'add', 'live', upstream);
+    g(up, 'fetch', '-q', 'live');
+    assert.equal(g(up, 'rev-parse', 'refs/remotes/origin/develop'), staleRef);
+    g(up, 'checkout', '-q', '-b', 'feat/y', 'live/develop');
+    commit(up, 'mine.brs', 'mine\n');
+    g(up, 'branch', 'origin/develop', staleRef); // a stray local branch named like a remote ref
+    const refsBefore = g(up, 'for-each-ref');
+    const remote = { url: upstream, owns: (u: string) => u === upstream };
+
+    const fresh = await prepareLocalCheckout({ path: up, base: 'develop', dataDir, remote });
+    assert.equal(fresh.baseRef, 'develop');
+    assert.match(fresh.diff, /mine\.brs/);
+    assert.doesNotMatch(fresh.diff, /moved\.brs/, 'a stale origin ref must not widen the diff');
+    assert.deepEqual(fresh.baseNotes, []);
+    assert.equal(g(up, 'for-each-ref'), refsBefore, "the user's refs are untouched");
+
+    const noFetch = await prepareLocalCheckout({ path: up, base: 'develop', dataDir });
+    assert.match(noFetch.diff, /moved\.brs/, 'without a remote the local ref is all there is');
+    assert.match(noFetch.baseNotes.join(), /could not be refreshed.*may be stale/);
+
+    const failed = await prepareLocalCheckout({ path: up, base: 'develop', dataDir, remote: { url: join(root, 'missing.git'), owns: () => false } });
+    assert.match(failed.baseNotes.join(), /could not be refreshed.*may be stale/);
+
+    for (const named of ['origin/develop', 'live/develop']) {
+      const co3 = await prepareLocalCheckout({ path: up, base: named, dataDir, remote });
+      assert.equal(co3.baseRef, 'develop', `${named} names the branch on a remote`);
+      assert.doesNotMatch(co3.diff, /moved\.brs/);
+    }
+    assert.doesNotMatch((await prepareLocalCheckout({ path: up, base: 'live/develop', dataDir })).diff, /moved\.brs/, 'a named remote ref is used as is');
+    assert.match((await prepareLocalCheckout({ path: up, base: 'origin/develop', dataDir })).diff, /moved\.brs/);
+    assert.equal(
+      (await prepareLocalCheckout({ path: up, base: 'origin/develop', dataDir })).diff,
+      g(up, 'diff', '--no-color', '--find-renames', g(up, 'merge-base', 'refs/remotes/origin/develop', 'HEAD'), 'HEAD') + '\n',
+      'origin/develop is the remote ref, not the stray local branch'
+    );
+    await assert.rejects(prepareLocalCheckout({ path: up, base: 'nowhere', dataDir, remote }), /"nowhere" not found/);
+    assert.equal((await prepareLocalCheckout({ path: up, base: 'develop', dataDir, remote })).baseStale, false);
+    assert.equal(noFetch.baseStale, true, 'a base that could not be refreshed is marked, not only described');
+
+    // A remote of another repo: its develop is not this repo's, so it is neither fetched nor renamed.
+    const forkUp = join(root, 'canonical.git');
+    g(root, 'init', '-q', '--bare', '-b', 'develop', forkUp);
+    g(up, 'push', '-q', forkUp, 'refs/remotes/live/develop:refs/heads/develop');
+    const canon = join(root, 'canonical');
+    g(root, 'clone', '-q', '-b', 'develop', forkUp, canon);
+    commit(canon, 'canon-only.brs', 'canon\n');
+    g(canon, 'push', '-q', 'origin', 'develop');
+    g(up, 'remote', 'add', 'other', forkUp);
+    g(up, 'fetch', '-q', 'other');
+    const onOther = await prepareLocalCheckout({ path: up, base: 'other/develop', dataDir, remote });
+    assert.equal(onOther.baseRef, 'other/develop', 'kept apart from this repo\'s develop');
+    assert.match(onOther.baseNotes.join(), /may be stale/);
+    assert.equal(onOther.baseStale, false, 'the exact ref the user named: a re-review may build on it');
+    assert.doesNotMatch(onOther.diff, /moved\.brs/, 'the ref the user named, not develop from another repo');
+
+    // A branch whose first segment equals a remote's name is a branch, not that remote's ref.
+    g(up, 'push', '-q', upstream, 'refs/remotes/live/develop:refs/heads/other/wip');
+    const onSlash = await prepareLocalCheckout({ path: up, base: 'other/wip', dataDir, remote });
+    assert.equal(onSlash.baseRef, 'other/wip');
+    assert.deepEqual(onSlash.baseNotes, []);
+    assert.doesNotMatch(onSlash.diff, /moved\.brs/);
+
+    // A PR's base is always a plain branch name, even when it looks like a remote's ref.
+    g(up, 'push', '-q', upstream, 'refs/remotes/live/develop:refs/heads/live/develop-old');
+    g(up, 'fetch', '-q', 'live');
+    const prBased = await prepareLocalCheckout({ path: up, prBase: 'live/develop-old', dataDir, remote });
+    assert.equal(prBased.baseRef, 'live/develop-old');
+    assert.deepEqual(prBased.baseNotes, []);
+    assert.equal((await prepareLocalCheckout({ path: up, prBase: 'develop', base: 'stack-parent-missing', dataDir, remote }).catch((e: Error) => e.message)), 'Base branch "stack-parent-missing" not found locally or on origin.', 'an explicit base wins over the PR');
+    g(up, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/develop');
+    assert.equal((await prepareLocalCheckout({ path: up, prBase: 'release/1.0+hf', dataDir, remote })).baseRef, 'develop', 'a PR base git refs here cannot name falls back to the default');
+    g(up, 'branch', 'stack-parent', 'live/develop');
+    const onStack = await prepareLocalCheckout({ path: up, base: 'stack-parent', dataDir, remote });
+    assert.equal(onStack.baseRef, 'stack-parent', 'a branch only on this machine still works as a base');
+    assert.equal(onStack.baseStale, false, 'there is no fresher copy of a local branch');
+    assert.doesNotMatch(onStack.baseNotes.join(), /may be stale/);
+    assert.match(onStack.baseNotes.join(), /local branch refs\/heads\/stack-parent/);
+    assert.doesNotMatch(onStack.diff, /moved\.brs/);
+    g(up, 'checkout', '-q', 'stack-parent');
+    await assert.rejects(prepareLocalCheckout({ path: up, base: 'live/develop', dataDir, remote }), /Nothing to review/);
+    assert.equal(readdirSync(join(dataDir, 'local')).some((n) => n.includes('stack-parent')), false, 'a refused review leaves no copy behind');
 
     const notRepo = join(root, 'plain');
     mkdirSync(notRepo);

@@ -48,6 +48,18 @@ export function resolveProject(repo: string, projects: { id: string; name: strin
   return { ok: false, error: `${repo} is in more than one project (${matches.map((p) => `${p.name} [${p.id}]`).join(', ')}). Pass projectId.` };
 }
 
+/** Bump when stored local reviews can no longer be trusted as a starting point. */
+export const LOCAL_REVIEW_VERSION = 2;
+
+/**
+ * The stored local review a new run may build on. A review of another base judged another diff, so
+ * its findings must not be re-checked into this one. The same goes for a review that had to use a
+ * base it could not refresh, and for version 1, which could do that without saying so.
+ */
+export function reusableLocalReview<T extends { version: number; base: string; baseStale?: boolean }>(stored: T | null, baseRef: string): T | null {
+  return stored && stored.version === LOCAL_REVIEW_VERSION && stored.base === baseRef && !stored.baseStale ? stored : null;
+}
+
 export interface DraftSource {
   id: string;
   postId?: string;

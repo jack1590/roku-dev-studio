@@ -38,10 +38,12 @@ function resultBody(result: ReviewResult) {
     headSha: result.headSha,
     finishedAt: result.finishedAt,
     summary: result.summary,
+    ...(result.reviewBody ? { reviewBody: result.reviewBody } : {}),
     counts: result.counts,
     ...(result.lostLenses?.length ? { lostLenses: result.lostLenses } : {}),
     ...(result.context.diffNotes.length ? { skippedFiles: result.context.diffNotes } : {}),
     ticket: result.context.ticket ? `${result.context.ticket.key}: ${result.context.ticket.summary}` : (result.context.ticketNote ?? 'none'),
+    ...(result.ci ? { ci: result.ci } : {}),
     ...(result.incremental ? { incremental: result.incremental } : {}),
   };
 }
@@ -87,7 +89,7 @@ export async function reviewRoute(pathname: string, body: Record<string, unknown
     if (!local.result) return { status: 409, body: { error: `The review is ${local.summary.status}, not done yet.`, status: statusBody(jobId, local.summary) } };
     return {
       status: 200,
-      body: { jobId, kind: 'local', repo: id.repo, branch: id.branch, base: local.base, ...resultBody(local.result), findings: draftView(local.result, { edits: {}, posted: {} }) },
+      body: { jobId, kind: 'local', repo: id.repo, branch: id.branch, base: local.base, ...(local.baseNotes?.length ? { baseNotes: local.baseNotes } : {}), ...(local.pullRequest ? { pullRequest: local.pullRequest } : {}), ...resultBody(local.result), findings: draftView(local.result, { edits: {}, posted: {} }) },
     };
   }
 
