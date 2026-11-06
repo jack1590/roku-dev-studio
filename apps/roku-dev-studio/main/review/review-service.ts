@@ -299,7 +299,7 @@ function update(job: Job, patch: Partial<ReviewSummary>): void {
   broadcast(publicSummary(job));
 }
 
-async function githubJson<T>(token: string, url: string): Promise<T> {
+export async function githubJson<T>(token: string, url: string): Promise<T> {
   // The token is only used in this header. It is not logged and not returned.
   const res = await fetch(`https://api.github.com${url}`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },

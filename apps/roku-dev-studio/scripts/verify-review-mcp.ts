@@ -1,6 +1,6 @@
 /** Pins the review MCP helpers: job ids, project lookup, remotes, the draft view. Run with `npm run verify:review-mcp`. */
 import assert from 'node:assert/strict';
-import { checkPostRequest, draftView, encodeJobId, parseGitHubRemote, parseJobId, resolveProject } from '../shared/review-mcp.js';
+import { checkPostRequest, draftView, encodeJobId, LOCAL_REVIEW_VERSION, parseGitHubRemote, parseJobId, resolveProject, reusableLocalReview } from '../shared/review-mcp.js';
 
 assert.equal(encodeJobId({ kind: 'pr', projectId: 'acme', repo: 'o/r', number: 12 }), 'pr:acme:o/r#12');
 assert.equal(encodeJobId({ kind: 'local', projectId: 'acme', repo: 'o/r', branch: 'feat/x' }), 'local:acme:o/r:feat/x');
@@ -69,5 +69,12 @@ assert.match(unknown.error, /nope/);
 assert.match(unknown.error, /f3/); // dismissed: not postable
 assert.equal((checkPostRequest({ ...base, ids: [] }) as { status: number }).status, 400);
 assert.deepEqual(checkPostRequest({ ...base, ids: ['f2-reply-1'] }), { ok: true, ids: ['f2-reply-1'] }); // already posted is fine: posting skips it
+
+const stored = { version: LOCAL_REVIEW_VERSION, base: 'develop' };
+assert.equal(reusableLocalReview(stored, 'develop'), stored);
+assert.equal(reusableLocalReview(stored, 'main'), null); // another base judged another diff
+assert.equal(reusableLocalReview({ version: 1, base: 'develop' }, 'develop'), null); // may have read a stale base
+assert.equal(reusableLocalReview(null, 'develop'), null);
+assert.equal(reusableLocalReview({ ...stored, baseStale: true }, 'develop'), null); // judged a diff that may be wrong
 
 console.log('verify-review-mcp: ok');

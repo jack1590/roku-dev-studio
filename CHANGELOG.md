@@ -8,6 +8,17 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.7.2]
+
+### Fixed
+- **Local branch reviews now judge the same diff as the PR.** A review started over MCP with `path` read the base from your own refs, so a stale `origin/develop`, or a default of `main` on a repo that integrates into `develop`, reviewed the wrong diff and reported problems in code the branch never touched. The base is now fetched fresh from GitHub into the review's own copy, and your repo is still not changed. If it can't be fetched, the local ref is used and `review_get` says so in `baseNotes`.
+- **`base` defaults to the open PR's base**, then to `origin/HEAD`. A base that differs from the PR's gets a `baseNotes` line. `origin-https/develop` now means `develop` on that remote when it is this repo, and `origin/develop` no longer picks up a local branch with that name. A ref on a remote of another repo is used as it is, with a `baseNotes` line.
+- **Changing the base starts clean.** Findings from a review of another base are no longer re-checked into the new one. The same goes for a review that had to use a stale copy of its base. Local reviews saved before this version start clean once, since they may have read a stale base.
+
+### Changed
+- **A local review of a branch with an open PR reads what a PR review reads:** the description, the discussion, and CI when the commit is pushed. Settled threads stay settled, and the ticket can come from the PR. The device step stays PR-only.
+- **`review_get` returns the overall comment (`reviewBody`) and the `ci` checks**, and for a local review `baseNotes` and `pullRequest`.
+
 ## [1.7.1]
 
 ### Fixed
@@ -278,7 +289,9 @@ First release of this fork. **Moving from an upstream build is a one-time manual
 ### Added
 - Initial public release: Remote Control, Device Discovery, Sideload, RALE / App Connector, Network Inspector, Action Scripts, MCP server for AI agents, and the `rds` CLI.
 
-[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/jack1590/roku-dev-studio/compare/v1.7.2...HEAD
+[1.7.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/jack1590/roku-dev-studio/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.3...v1.7.0
 [1.6.3]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/jack1590/roku-dev-studio/compare/v1.6.1...v1.6.2

@@ -127,17 +127,33 @@ export interface LocalCheckout extends Checkout {
   originUrl: string;
   /** `git config user.name`, or "local". */
   author: string;
+  /** What the reader should know about the base, e.g. that it could not be refreshed. */
+  baseNotes: string[];
+  /** This repo's remote-tracking ref had to stand in for its branch on GitHub, so the diff may be wrong. */
+  baseStale: boolean;
 }
 
 const validRef = (ref: string) => REF_PATTERN.test(ref) && !ref.startsWith('-') && !ref.includes('..');
+
+/** A base fetch that hangs must not hold a review forever: it falls back to the local ref. */
+const BASE_FETCH_MS = 120_000;
 
 /**
  * Checks out the committed work of a local branch for review. Only reads the user's repo (never
  * fetches, never adds refs or worktrees there): the review copy is a `--shared` clone at HEAD under
  * `dataDir`, so uncommitted edits stay out and the user can keep working. The diff is
  * `merge-base(base, HEAD)..HEAD`; base defaults to `origin/HEAD`.
+ *
+ * The base is fetched from `remote` into the copy, because the user's own refs can be stale or
+ * can come from a remote that no longer fetches. When that fails the local ref is used and `baseNotes`
+ * says so; `baseStale` is set when that ref is a remote-tracking copy of this repo's branch.
+ *
+ * `base` is what someone typed: `origin-https/develop` names `develop` on that remote when that ref
+ * exists. If the remote is another repo (`remote.owns` says no), its ref is used as is, since this
+ * repo's `develop` is a different branch. `prBase` is a PR's base, always a plain branch name, and
+ * is used when `base` is not given.
  */
-export async function prepareLocalCheckout(input: { path: string; base?: string; dataDir: string; signal?: AbortSignal; sinceSha?: string }): Promise<LocalCheckout> {
+export async function prepareLocalCheckout(input: { path: string; base?: string; prBase?: string; dataDir: string; signal?: AbortSignal; sinceSha?: string; remote?: { url: string; token?: string; owns: (remoteUrl: string) => boolean } }): Promise<LocalCheckout> {
   const { dataDir, signal, sinceSha } = input;
   const run = (args: string[], cwd: string) => git(args, { cwd, signal }).then((out) => out.trim());
   const top = await run(['rev-parse', '--show-toplevel'], input.path).catch(() => {
@@ -151,42 +167,44 @@ export async function prepareLocalCheckout(input: { path: string; base?: string;
   });
   const author = (await run(['config', 'user.name'], top).catch(() => '')) || 'local';
 
+  const exists = (ref: string) => run(['rev-parse', '--verify', '--quiet', ref], top).then(() => true, () => false);
+  const plainBranch = (b: string) => [`refs/remotes/origin/${b}`, `refs/heads/${b}`];
+  const prBase = input.prBase && validRef(input.prBase) ? input.prBase : undefined;
+
   let baseRef: string;
-  let baseFull: string;
+  let localRefs: string[];
+  let canFetch = !!input.remote;
+  let foreign = false;
   if (input.base) {
     if (!validRef(input.base)) throw new Error('Invalid base branch name.');
-    baseRef = input.base;
-    const candidates = [`refs/remotes/origin/${baseRef}`, `refs/heads/${baseRef}`];
-    let found: string | undefined;
-    for (const ref of candidates) {
-      if (await run(['rev-parse', '--verify', '--quiet', ref], top).then(() => true, () => false)) {
-        found = ref;
-        break;
+    const named = input.base;
+    const remoteName = (await run(['remote'], top)).split('\n').find((r) => r && named.startsWith(`${r}/`));
+    if (remoteName && (await exists(`refs/remotes/${named}`))) {
+      localRefs = [`refs/remotes/${named}`];
+      const remoteUrl = await run(['remote', 'get-url', remoteName], top).catch(() => '');
+      if (input.remote?.owns(remoteUrl)) {
+        baseRef = named.slice(remoteName.length + 1);
+      } else {
+        baseRef = named;
+        canFetch = false;
+        foreign = !!input.remote;
       }
+    } else {
+      baseRef = named;
+      localRefs = plainBranch(named);
     }
-    if (!found) throw new Error(`Base branch "${baseRef}" not found locally or on origin.`);
-    baseFull = found;
+  } else if (prBase) {
+    baseRef = prBase;
+    localRefs = plainBranch(prBase);
   } else {
     const head = await run(['symbolic-ref', 'refs/remotes/origin/HEAD'], top).catch(() => {
       throw new Error('Could not tell the base branch (origin/HEAD is not set). Pass base, e.g. "develop".');
     });
-    baseFull = head;
     baseRef = head.replace(/^refs\/remotes\/origin\//, '');
+    localRefs = [head];
   }
 
   const headSha = await run(['rev-parse', 'HEAD'], top);
-  const mergeBase = await run(['merge-base', baseFull, headSha], top);
-  if (mergeBase === headSha) throw new Error(`Nothing to review: no commits on ${branch} since ${baseRef}.`);
-  const diff = await git(['diff', '--no-color', '--find-renames', mergeBase, headSha], { cwd: top, signal });
-
-  let sinceDiff: string | undefined;
-  if (sinceSha && /^[0-9a-f]{40}$/.test(sinceSha) && sinceSha !== headSha) {
-    const ancestor = await run(['merge-base', '--is-ancestor', sinceSha, headSha], top).then(() => true, () => false);
-    if (ancestor) {
-      const files = (await run(['diff', '--name-only', mergeBase, headSha], top)).split('\n').filter(Boolean);
-      sinceDiff = files.length ? await git(['diff', '--no-color', '--find-renames', sinceSha, headSha, '--', ...files], { cwd: top, signal }) : '';
-    }
-  }
 
   // Folder name plus a short hash of the path: two checkouts with the same folder name never share a copy.
   const name = `${path.basename(top).replace(/[^A-Za-z0-9_.-]/g, '_')}-${createHash('sha1').update(top).digest('hex').slice(0, 8)}`;
@@ -194,10 +212,59 @@ export async function prepareLocalCheckout(input: { path: string; base?: string;
   await fs.rm(worktree, { recursive: true, force: true });
   await fs.mkdir(path.dirname(worktree), { recursive: true });
   await git(['clone', '--quiet', '--shared', '--no-checkout', top, worktree], { signal });
-  await git(['checkout', '--quiet', '--detach', headSha], { cwd: worktree, signal });
-  await fs.mkdir(path.join(worktree, REVIEW_DIR), { recursive: true });
-  await fs.writeFile(path.join(worktree, REVIEW_DIR, 'pr.diff'), diff, 'utf-8');
-  return { worktree, headSha, baseRef, diff, sinceDiff, branch, originUrl, author };
+  try {
+    await git(['checkout', '--quiet', '--detach', headSha], { cwd: worktree, signal });
+
+    const baseNotes: string[] = [];
+    const fetchedRef = 'refs/rds/base';
+    const fetched = input.remote && canFetch
+      ? await git(['fetch', '--force', '--no-tags', input.remote.url, `+refs/heads/${baseRef}:${fetchedRef}`], { cwd: worktree, token: input.remote.token, signal: signal ?? AbortSignal.timeout(BASE_FETCH_MS) }).then(
+          () => true,
+          () => false
+        )
+      : false;
+    let baseSha: string;
+    let baseStale = false;
+    if (fetched) {
+      baseSha = await run(['rev-parse', fetchedRef], worktree);
+    } else {
+      let found: string | undefined;
+      for (const ref of localRefs) {
+        if (await exists(ref)) {
+          found = ref;
+          break;
+        }
+      }
+      if (!found) throw new Error(`Base branch "${input.base ?? baseRef}" not found locally or on origin.`);
+      baseSha = await run(['rev-parse', found], top);
+      if (found.startsWith('refs/heads/')) {
+        baseNotes.push(`${baseRef} is not on GitHub or could not be fetched, so the diff uses the local branch ${found} (${baseSha.slice(0, 7)}).`);
+      } else {
+        baseNotes.push(`${baseRef} could not be refreshed from GitHub, so the diff uses the local ${found} (${baseSha.slice(0, 7)}), which may be stale.`);
+        baseStale = !foreign;
+      }
+    }
+
+    const mergeBase = await run(['merge-base', baseSha, headSha], worktree);
+    if (mergeBase === headSha) throw new Error(`Nothing to review: no commits on ${branch} since ${baseRef}.`);
+    const diff = await git(['diff', '--no-color', '--find-renames', mergeBase, headSha], { cwd: worktree, signal });
+
+    let sinceDiff: string | undefined;
+    if (sinceSha && /^[0-9a-f]{40}$/.test(sinceSha) && sinceSha !== headSha) {
+      const ancestor = await run(['merge-base', '--is-ancestor', sinceSha, headSha], worktree).then(() => true, () => false);
+      if (ancestor) {
+        const files = (await run(['diff', '--name-only', mergeBase, headSha], worktree)).split('\n').filter(Boolean);
+        sinceDiff = files.length ? await git(['diff', '--no-color', '--find-renames', sinceSha, headSha, '--', ...files], { cwd: worktree, signal }) : '';
+      }
+    }
+
+    await fs.mkdir(path.join(worktree, REVIEW_DIR), { recursive: true });
+    await fs.writeFile(path.join(worktree, REVIEW_DIR, 'pr.diff'), diff, 'utf-8');
+    return { worktree, headSha, baseRef, baseNotes, baseStale, diff, sinceDiff, branch, originUrl, author };
+  } catch (err) {
+    await removeLocalCheckout(worktree);
+    throw err;
+  }
 }
 
 /** Removes a local review copy; errors are ignored. */

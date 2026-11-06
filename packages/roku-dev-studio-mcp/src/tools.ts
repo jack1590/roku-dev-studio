@@ -1912,9 +1912,9 @@ const REVIEW_TOOLS: Tool[] = [
     title: 'Start a code review',
     description: [
       'Start Dev Studio\'s multi-model code review of a GitHub PR (`repo` + `number`) or of the committed work on a local branch (`path`, optional `base`). Returns a `jobId` right away.',
-      'Local reviews read only committed work on the branch checked out at `path` (an absolute path; pass your working directory). The diff is from the merge-base with `base` (default: the repo\'s origin/HEAD, e.g. main; pass `base` for repos that integrate into develop or similar). No device step; never posted.',
+      'Local reviews read only committed work on the branch checked out at `path` (an absolute path; pass your working directory). The diff is from the merge-base with `base`, fetched fresh from GitHub into the review\'s own copy (your repo is not changed). `base` defaults to the base of the branch\'s open PR, else the repo\'s origin/HEAD, e.g. main; pass `base` for a repo that integrates into develop or similar and has no PR yet. A branch with an open PR also gets its description, discussion and CI. No device step; never posted. Check `baseNotes` in `review_get`: it says when the base could not be refreshed or differs from the PR\'s.',
       'Reviews take several minutes. Call `review_status` with the `jobId` about every 30 s until `status` is `done` or `failed`; do not wait inside one call. Starting again while one runs returns the running job.',
-      'Reviewing the same PR or branch again re-checks the earlier findings (fixed or still open) and reviews only the new commits.',
+      'Reviewing the same PR, or the same branch against the same base, again re-checks the earlier findings (fixed or still open) and reviews only the new commits. Another base, or a base that could not be refreshed, starts clean.',
       'The project (tokens, models) is found from the repo; pass `projectId` when Dev Studio says the repo is in more than one project. Needs Roku Dev Studio running.'
     ],
     inputSchema: {
@@ -1923,7 +1923,7 @@ const REVIEW_TOOLS: Tool[] = [
         repo: { type: 'string', description: 'GitHub repo "owner/name" (PR review).' },
         number: { type: 'number', description: 'PR number (PR review).' },
         path: { type: 'string', description: 'Absolute path of a local git checkout (local branch review).' },
-        base: { type: 'string', description: 'Local review only: branch to diff against. Default: origin/HEAD.' },
+        base: { type: 'string', description: 'Local review only: branch to diff against, fetched fresh from GitHub. Default: the base of the branch\'s open PR, else origin/HEAD.' },
         projectId: { type: 'string', description: 'Dev Studio project id, when the repo is in more than one project.' }
       },
       oneOf: [{ required: ['repo', 'number'] }, { required: ['path'] }],
@@ -1959,7 +1959,7 @@ const REVIEW_TOOLS: Tool[] = [
     name: 'review_get',
     title: 'Review findings',
     description: [
-      'The finished review: `summary`, `counts`, `headSha`, the JIRA ticket it was checked against, files skipped as too large or generated, lenses lost (an incomplete review), and `findings[]`.',
+      'The finished review: `summary`, the overall comment `reviewBody`, `counts`, `headSha`, the JIRA ticket it was checked against, the `ci` checks it read, files skipped as too large or generated, lenses lost (an incomplete review), and `findings[]`. A local review also has `base`, `baseNotes`, and `pullRequest` when the branch has an open PR.',
       'Each finding has an `id`, `status` (issue = verified problem; needs-device = needs a device to confirm; noted = minor/hedged, below the counting floors; dismissed = judged not real), `severity`, `confidence` (0-1), `file`/`line`, `detail`, and `comment`: the draft GitHub comment exactly as it would post (including edits made in Dev Studio).',
       '`postable` findings can be posted with `review_post` (PR reviews only). Show the user the findings and drafts and post only what they approve, passing this `headSha` and `finishedAt`.'
     ],
@@ -1980,9 +1980,13 @@ const REVIEW_TOOLS: Tool[] = [
         url: { type: 'string' },
         branch: { type: 'string' },
         base: { type: 'string' },
+        baseNotes: { type: 'array', items: { type: 'string' } },
+        pullRequest: { type: 'number' },
         headSha: { type: 'string' },
         finishedAt: { type: 'number' },
         summary: { type: 'string' },
+        reviewBody: { type: 'string' },
+        ci: { type: 'object', additionalProperties: true },
         counts: { type: 'object', additionalProperties: true },
         lostLenses: { type: 'array', items: { type: 'string' } },
         skippedFiles: { type: 'array', items: { type: 'string' } },
