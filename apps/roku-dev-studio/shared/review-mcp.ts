@@ -148,3 +148,24 @@ export function checkPostRequest(input: {
   if (bad.length) return { ok: false, status: 400, error: `Not postable on this review: ${bad.join(', ')}. Nothing was posted.` };
   return { ok: true, ids };
 }
+
+/**
+ * The head a new review reviews from: the last review's, when it was complete and neither the
+ * project ("Re-review only what changed" off) nor this call (`full`) asks for a full review.
+ */
+export function reviewSince(stored: { result: { headSha: string; lostLenses?: string[] } } | null, opts: { incrementalReview?: boolean; full?: boolean }): string | undefined {
+  return !opts.full && opts.incrementalReview !== false && stored && !stored.result.lostLenses?.length ? stored.result.headSha : undefined;
+}
+
+/**
+ * Findings the PR's review left open (not dismissed, not CI) that the branch's own review does not
+ * have open: a local review re-checks these too, so its gate does not miss what the PR review found.
+ * Same identity as the judge's re-check: the finding id. A branch dismissal newer than the PR review
+ * stands: it is the ruling on the PR's open copy, which would otherwise come back every round.
+ */
+export function prOnlyOpen<T extends { id: string; status: string; ci?: unknown }>(own: { findings: T[]; finishedAt: number } | undefined, pr: { findings: T[]; finishedAt: number } | undefined): T[] {
+  if (!pr) return [];
+  const ownNewer = !!own && own.finishedAt > pr.finishedAt;
+  const ownHas = new Set((own?.findings ?? []).filter((f) => !f.ci && (f.status !== 'dismissed' || ownNewer)).map((f) => f.id));
+  return pr.findings.filter((f) => f.status !== 'dismissed' && !f.ci && !ownHas.has(f.id));
+}

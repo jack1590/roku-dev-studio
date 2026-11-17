@@ -1,6 +1,6 @@
 /** Pins the review MCP helpers: job ids, project lookup, remotes, the draft view. Run with `npm run verify:review-mcp`. */
 import assert from 'node:assert/strict';
-import { checkPostRequest, draftView, encodeJobId, LOCAL_REVIEW_VERSION, parseGitHubRemote, parseJobId, resolveProject, reusableLocalReview } from '../shared/review-mcp.js';
+import { checkPostRequest, draftView, encodeJobId, LOCAL_REVIEW_VERSION, parseGitHubRemote, parseJobId, prOnlyOpen, resolveProject, reusableLocalReview, reviewSince } from '../shared/review-mcp.js';
 
 assert.equal(encodeJobId({ kind: 'pr', projectId: 'acme', repo: 'o/r', number: 12 }), 'pr:acme:o/r#12');
 assert.equal(encodeJobId({ kind: 'local', projectId: 'acme', repo: 'o/r', branch: 'feat/x' }), 'local:acme:o/r:feat/x');
@@ -76,5 +76,33 @@ assert.equal(reusableLocalReview(stored, 'main'), null); // another base judged 
 assert.equal(reusableLocalReview({ version: 1, base: 'develop' }, 'develop'), null); // may have read a stale base
 assert.equal(reusableLocalReview(null, 'develop'), null);
 assert.equal(reusableLocalReview({ ...stored, baseStale: true }, 'develop'), null); // judged a diff that may be wrong
+
+// Where a new review starts: the last complete review's head, unless the project or this call asks for a full review.
+const last = { result: { headSha: 'abc' } };
+assert.equal(reviewSince(last, {}), 'abc');
+assert.equal(reviewSince(last, { incrementalReview: true }), 'abc');
+assert.equal(reviewSince(last, { incrementalReview: false }), undefined); // project setting off
+assert.equal(reviewSince(last, { full: true }), undefined); // review_start full: this run only
+assert.equal(reviewSince({ result: { headSha: 'abc', lostLenses: ['security'] } }, {}), undefined); // incomplete review
+assert.equal(reviewSince(null, {}), undefined);
+
+// A local review of a branch with an open PR also re-checks what the PR's review left open.
+const own = [
+  { id: 'a', status: 'issue' },
+  { id: 'b', status: 'dismissed' },
+];
+const prFindings = [
+  { id: 'a', status: 'issue' }, // the branch's review has it open already
+  { id: 'b', status: 'needs-device' }, // the branch's judge dismissed it; the PR's still has it open
+  { id: 'c', status: 'noted' },
+  { id: 'd', status: 'dismissed' },
+  { id: 'e', status: 'issue', ci: { check: 'lint' } }, // CI is read fresh for this commit
+];
+const prReview = { findings: prFindings, finishedAt: 2000 };
+assert.deepEqual(prOnlyOpen({ findings: own, finishedAt: 1000 }, prReview).map((f) => f.id), ['b', 'c']);
+assert.deepEqual(prOnlyOpen(undefined, prReview).map((f) => f.id), ['a', 'b', 'c']);
+assert.deepEqual(prOnlyOpen({ findings: own, finishedAt: 1000 }, undefined), []);
+// The branch's judge dismissed b after the PR review: that newer ruling stands, so b is not brought back.
+assert.deepEqual(prOnlyOpen({ findings: own, finishedAt: 3000 }, prReview).map((f) => f.id), ['c']);
 
 console.log('verify-review-mcp: ok');

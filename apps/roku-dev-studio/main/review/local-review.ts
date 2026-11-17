@@ -8,16 +8,17 @@
  *   from the branch name only.
  * - Kept per branch, apart from PR reviews (not in the PR list, never posted). A second review of
  *   the same branch and base re-checks the open findings and reviews only the new commits, like a PR
- *   re-review. Another base starts clean.
+ *   re-review. Another base starts clean. Findings the open PR's own review left open are re-checked
+ *   as well, since the two keep separate histories.
  */
 
 import { agentBackendFor } from './claude-code';
 import { budgetDiff, ciPromptBlock, countFindings, discussionPromptBlock, dismissalPromptBlock, fetchCi, fetchDiscussion, fileInventory, lookupTicket, prepareLocalCheckout, readChangedFiles, readStandards, removeLocalCheckout, runReview, ticketPromptBlock, type ReviewResult } from 'roku-dev-studio-review';
-import { encodeJobId, LOCAL_REVIEW_VERSION, parseGitHubRemote, resolveProject, reusableLocalReview } from '../../shared/review-mcp';
+import { encodeJobId, LOCAL_REVIEW_VERSION, parseGitHubRemote, prOnlyOpen, resolveProject, reusableLocalReview, reviewSince } from '../../shared/review-mcp';
 import { getProjectRecord, listProjectRecords } from '../ipc/project-handlers';
 import * as tokenStore from '../project-token-store';
 import { loadDismissals } from './review-dismissals';
-import { githubJson, reviewDataDir, wikiContext, type JobStatus } from './review-service';
+import { githubJson, readStored, reviewDataDir, wikiContext, type JobStatus } from './review-service';
 
 const fs = require('fs');
 const path = require('path');
@@ -82,7 +83,7 @@ function gitOut(args: string[], cwd: string): Promise<string> {
 }
 
 /** Start a review of the branch checked out at `input.path` (or return the one already running). */
-export async function startLocalReview(input: { path: string; base?: string; projectId?: string }): Promise<{ success: true; jobId: string; summary: LocalSummary } | { success: false; error: string }> {
+export async function startLocalReview(input: { path: string; base?: string; projectId?: string; full?: boolean }): Promise<{ success: true; jobId: string; summary: LocalSummary } | { success: false; error: string }> {
   if (!input.path || !path.isAbsolute(input.path) || !fs.existsSync(input.path)) return { success: false, error: 'path must be an absolute path to a git checkout.' };
   const url = await gitOut(['remote', 'get-url', 'origin'], input.path).catch(() => '');
   if (!url) return { success: false, error: `${input.path} is not a git checkout with an origin remote.` };
@@ -102,7 +103,7 @@ export async function startLocalReview(input: { path: string; base?: string; pro
   jobs.set(jobId, job);
   mainLog(`[reviews] start local ${repo}@${branch}`);
   // ponytail: local jobs run unqueued; add a cap if agents start many at once.
-  void executeLocal(job, input.path, input.base).catch((err: unknown) => {
+  void executeLocal(job, input.path, input.base, input.full === true).catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
     mainWarn(`[reviews] local ${repo}@${branch} failed: ${message}`);
     Object.assign(job, { status: 'failed', phase: undefined, detail: undefined, error: message });
@@ -130,7 +131,7 @@ async function openPrsFor(token: string, repo: string, branch: string): Promise<
   });
 }
 
-async function executeLocal(job: LocalSummary, checkoutPath: string, base?: string): Promise<void> {
+async function executeLocal(job: LocalSummary, checkoutPath: string, base: string | undefined, fullReview: boolean): Promise<void> {
   const update = (patch: Partial<LocalSummary>) => Object.assign(job, patch);
   const project = getProjectRecord(job.projectId);
   if (!project) throw new Error('Project not found.');
@@ -143,7 +144,7 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base?: stri
 
   update({ detail: 'checking out the committed work' });
   const stored = readStoredLocal(job.projectId, job.repo, job.branch);
-  const sinceSha = project.incrementalReview !== false && stored && !stored.result.lostLenses?.length ? stored.result.headSha : undefined;
+  const sinceSha = reviewSince(stored, { incrementalReview: project.incrementalReview, full: fullReview });
   const checkout = await prepareLocalCheckout({
     path: checkoutPath,
     base,
@@ -165,13 +166,16 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base?: stri
     const incremental = sinceSha !== undefined && checkout.sinceDiff !== undefined && previous ? { sinceSha, diff: budgetDiff(checkout.sinceDiff) } : undefined;
     const budgeted = incremental?.diff ?? full;
     const changedFiles = budgeted.files.map((f) => f.path);
-    const openBefore = previous ? previous.result.findings.filter((f) => f.status !== 'dismissed' && !f.ci) : [];
+    // The PR's review keeps its own history: what it left open on the same base is re-checked here too, so this gate sees it.
+    const fromPr = pr && pr.base.ref === checkout.baseRef ? prOnlyOpen(previous?.result, readStored(job.projectId, job.repo, pr.number)?.result) : [];
+    const openBefore = [...(previous ? previous.result.findings.filter((f) => f.status !== 'dismissed' && !f.ci) : []), ...fromPr];
 
     if (incremental && !changedFiles.length && previous) {
       // New commits touch none of the branch's own files: the earlier findings carry over.
       const now = Date.now();
       // The findings carry over, but not what was read about the old head: its CI is not this commit's.
-      const findings = previous.result.findings.filter((f) => !f.ci);
+      // A PR finding replaces the branch's dismissed one with the same id.
+      const findings = [...previous.result.findings.filter((f) => !f.ci && !fromPr.some((p) => p.id === f.id)), ...fromPr];
       save(job, checkout.baseRef, { ...about, pullRequest: previous.pullRequest }, {
         ...previous.result,
         ci: undefined,
