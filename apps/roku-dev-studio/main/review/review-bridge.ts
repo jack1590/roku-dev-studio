@@ -54,7 +54,7 @@ export async function reviewRoute(pathname: string, body: Record<string, unknown
     const projectId = str(body.projectId);
     const localPath = str(body.path);
     if (localPath) {
-      const started = await startLocalReview({ path: localPath, base: str(body.base), projectId });
+      const started = await startLocalReview({ path: localPath, base: str(body.base), projectId, full: body.full === true });
       return started.success ? { status: 200, body: { jobId: started.jobId, status: statusBody(started.jobId, started.summary) } } : { status: 400, body: { error: started.error } };
     }
     const repo = str(body.repo);
@@ -62,7 +62,7 @@ export async function reviewRoute(pathname: string, body: Record<string, unknown
     if (!repo || !Number.isInteger(number) || number <= 0) return { status: 400, body: { error: 'Pass either path (a local checkout) or repo ("owner/name") and number.' } };
     const project = resolveProject(repo, listProjectRecords(), projectId);
     if (!project.ok) return { status: 400, body: { error: project.error } };
-    const started = startReview(project.projectId, project.repo, number);
+    const started = startReview(project.projectId, project.repo, number, { full: body.full === true });
     if (!started.success) return { status: 400, body: { error: started.error } };
     const jobId = prJobId(started.summary);
     return { status: 200, body: { jobId, status: statusBody(jobId, started.summary) } };

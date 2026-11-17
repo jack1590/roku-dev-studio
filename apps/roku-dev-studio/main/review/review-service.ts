@@ -13,6 +13,7 @@ import { IPC } from '../../shared/ipc/channels';
 import { containsSecret, defaultCompanyTag } from '../../shared/project-config';
 import { addCost, EMPTY_COST, ciPromptBlock, discussionPromptBlock, fetchDiscussion, dismissalPromptBlock, fetchCi, lookupTicket, ticketPromptBlock, readChangedFiles, TEST_FILE, budgetDiff, fileInventory, prepareCheckout, readStandards, readWiki, renderWikiPromptBlock, runDeviceVerification, runReview, selectWikiContext, type DeviceReport, type ReviewResult , type AgentBackend } from 'roku-dev-studio-review';
 import { REVIEW_LIMITS } from '../../shared/project-config';
+import { reviewSince } from '../../shared/review-mcp';
 import { getProjectRecord, resolveHomePath } from '../ipc/project-handlers';
 import * as tokenStore from '../project-token-store';
 import { connectedDevices } from '../mcp-bridge';
@@ -74,6 +75,8 @@ export interface StoredReview {
 
 interface Job extends ReviewSummary {
   controller: AbortController;
+  /** This run reviews the whole PR, whatever the project's "Re-review only what changed" says. */
+  full?: boolean;
 }
 
 interface PoolDevice extends ReviewDevice {
@@ -283,7 +286,7 @@ function skippedReason(result: ReviewResult): string | undefined {
 }
 
 function publicSummary(job: Job): ReviewSummary {
-  const { controller: _controller, ...summary } = job;
+  const { controller: _controller, full: _full, ...summary } = job;
   return summary;
 }
 
@@ -334,7 +337,7 @@ async function execute(job: Job): Promise<void> {
   update(job, { phase: 'preparing', detail: 'checking out the code' });
   // Re-review only what changed: needs a complete previous review and its head still in the PR's history.
   const previous = readStored(job.projectId, job.repo, job.number);
-  const sinceSha = project.incrementalReview !== false && previous && !previous.result.lostLenses?.length ? previous.result.headSha : undefined;
+  const sinceSha = reviewSince(previous, { incrementalReview: project.incrementalReview, full: job.full });
   const checkout = await prepareCheckout({ repo: job.repo, prNumber: job.number, baseRef: pr.base.ref, token: githubToken, dataDir, signal, sinceSha });
   const full = budgetDiff(checkout.diff);
   const prFiles = full.files.map((f) => f.path);
@@ -541,12 +544,12 @@ function pump(): void {
 }
 
 /** Queue a PR review (or return the one already queued or running). Used by the PR list and the MCP bridge. */
-export function startReview(projectId: string, repo: string, number: number): { success: true; summary: ReviewSummary } | { success: false; error: string } {
+export function startReview(projectId: string, repo: string, number: number, opts: { full?: boolean } = {}): { success: true; summary: ReviewSummary } | { success: false; error: string } {
   if (!getProjectRecord(projectId) || !REPO_PATTERN.test(repo) || !Number.isInteger(number) || number <= 0) return { success: false, error: 'Invalid review request.' };
   const key = jobKey(projectId, repo, number);
   const existing = jobs.get(key);
   if (existing && (existing.status === 'queued' || existing.status === 'running')) return { success: true, summary: publicSummary(existing) };
-  const job: Job = { projectId, repo, number, status: 'queued', controller: new AbortController() };
+  const job: Job = { projectId, repo, number, status: 'queued', controller: new AbortController(), ...(opts.full ? { full: true } : {}) };
   jobs.set(key, job);
   queue.push(key);
   broadcast(publicSummary(job));

@@ -1914,7 +1914,7 @@ const REVIEW_TOOLS: Tool[] = [
       'Start Dev Studio\'s multi-model code review of a GitHub PR (`repo` + `number`) or of the committed work on a local branch (`path`, optional `base`). Returns a `jobId` right away.',
       'Local reviews read only committed work on the branch checked out at `path` (an absolute path; pass your working directory). The diff is from the merge-base with `base`, fetched fresh from GitHub into the review\'s own copy (your repo is not changed). `base` defaults to the base of the branch\'s open PR, else the repo\'s origin/HEAD, e.g. main; pass `base` for a repo that integrates into develop or similar and has no PR yet. A branch with an open PR also gets its description, discussion and CI. No device step; never posted. Check `baseNotes` in `review_get`: it says when the base could not be refreshed or differs from the PR\'s.',
       'Reviews take several minutes. Call `review_status` with the `jobId` about every 30 s until `status` is `done` or `failed`; do not wait inside one call. Starting again while one runs returns the running job.',
-      'Reviewing the same PR, or the same branch against the same base, again re-checks the earlier findings (fixed or still open) and reviews only the new commits. Another base, or a base that could not be refreshed, starts clean.',
+      'Reviewing the same PR, or the same branch against the same base, again re-checks the earlier findings (fixed or still open) and reviews only the new commits. Another base, or a base that could not be refreshed, starts clean. A local review of a branch with an open PR also re-checks the findings that PR\'s own review left open. Pass `full: true` to review every commit again for this run only (the earlier open findings are still re-checked); the project\'s "Re-review only what changed" setting is not changed.',
       'The project (tokens, models) is found from the repo; pass `projectId` when Dev Studio says the repo is in more than one project. Needs Roku Dev Studio running.'
     ],
     inputSchema: {
@@ -1924,7 +1924,8 @@ const REVIEW_TOOLS: Tool[] = [
         number: { type: 'number', description: 'PR number (PR review).' },
         path: { type: 'string', description: 'Absolute path of a local git checkout (local branch review).' },
         base: { type: 'string', description: 'Local review only: branch to diff against, fetched fresh from GitHub. Default: the base of the branch\'s open PR, else origin/HEAD.' },
-        projectId: { type: 'string', description: 'Dev Studio project id, when the repo is in more than one project.' }
+        projectId: { type: 'string', description: 'Dev Studio project id, when the repo is in more than one project.' },
+        full: { type: 'boolean', description: 'Review the whole PR or branch, not only the commits since the last review. This run only. Default false.' }
       },
       oneOf: [{ required: ['repo', 'number'] }, { required: ['path'] }],
       additionalProperties: false
