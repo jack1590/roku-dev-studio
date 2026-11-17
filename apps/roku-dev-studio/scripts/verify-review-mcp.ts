@@ -98,8 +98,11 @@ const prFindings = [
   { id: 'd', status: 'dismissed' },
   { id: 'e', status: 'issue', ci: { check: 'lint' } }, // CI is read fresh for this commit
 ];
-assert.deepEqual(prOnlyOpen(own, prFindings).map((f) => f.id), ['b', 'c']);
-assert.deepEqual(prOnlyOpen([], prFindings).map((f) => f.id), ['a', 'b', 'c']);
-assert.deepEqual(prOnlyOpen(own, []), []);
+const prReview = { findings: prFindings, finishedAt: 2000 };
+assert.deepEqual(prOnlyOpen({ findings: own, finishedAt: 1000 }, prReview).map((f) => f.id), ['b', 'c']);
+assert.deepEqual(prOnlyOpen(undefined, prReview).map((f) => f.id), ['a', 'b', 'c']);
+assert.deepEqual(prOnlyOpen({ findings: own, finishedAt: 1000 }, undefined), []);
+// The branch's judge dismissed b after the PR review: that newer ruling stands, so b is not brought back.
+assert.deepEqual(prOnlyOpen({ findings: own, finishedAt: 3000 }, prReview).map((f) => f.id), ['c']);
 
 console.log('verify-review-mcp: ok');

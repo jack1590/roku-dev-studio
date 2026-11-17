@@ -160,9 +160,12 @@ export function reviewSince(stored: { result: { headSha: string; lostLenses?: st
 /**
  * Findings the PR's review left open (not dismissed, not CI) that the branch's own review does not
  * have open: a local review re-checks these too, so its gate does not miss what the PR review found.
- * Same identity as the judge's re-check: the finding id.
+ * Same identity as the judge's re-check: the finding id. A branch dismissal newer than the PR review
+ * stands: it is the ruling on the PR's open copy, which would otherwise come back every round.
  */
-export function prOnlyOpen<T extends { id: string; status: string; ci?: unknown }>(own: T[], pr: T[]): T[] {
-  const ownOpen = new Set(own.filter((f) => f.status !== 'dismissed' && !f.ci).map((f) => f.id));
-  return pr.filter((f) => f.status !== 'dismissed' && !f.ci && !ownOpen.has(f.id));
+export function prOnlyOpen<T extends { id: string; status: string; ci?: unknown }>(own: { findings: T[]; finishedAt: number } | undefined, pr: { findings: T[]; finishedAt: number } | undefined): T[] {
+  if (!pr) return [];
+  const ownNewer = !!own && own.finishedAt > pr.finishedAt;
+  const ownHas = new Set((own?.findings ?? []).filter((f) => !f.ci && (f.status !== 'dismissed' || ownNewer)).map((f) => f.id));
+  return pr.findings.filter((f) => f.status !== 'dismissed' && !f.ci && !ownHas.has(f.id));
 }

@@ -167,7 +167,7 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base: strin
     const budgeted = incremental?.diff ?? full;
     const changedFiles = budgeted.files.map((f) => f.path);
     // The PR's review keeps its own history: what it left open on the same base is re-checked here too, so this gate sees it.
-    const fromPr = pr && pr.base.ref === checkout.baseRef ? prOnlyOpen(previous?.result.findings ?? [], readStored(job.projectId, job.repo, pr.number)?.result.findings ?? []) : [];
+    const fromPr = pr && pr.base.ref === checkout.baseRef ? prOnlyOpen(previous?.result, readStored(job.projectId, job.repo, pr.number)?.result) : [];
     const openBefore = [...(previous ? previous.result.findings.filter((f) => f.status !== 'dismissed' && !f.ci) : []), ...fromPr];
 
     if (incremental && !changedFiles.length && previous) {

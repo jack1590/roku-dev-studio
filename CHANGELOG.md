@@ -14,7 +14,7 @@ entries up to 1.3.0 are upstream's, and their links point there.
 - **`review_start` takes `full: true`** to review the whole PR or branch again for that run only, not just the commits since the last review. The open findings are still re-checked, and the project's "Re-review only what changed" setting is left as it is.
 
 ### Fixed
-- **A local branch review now re-checks what the PR's review left open.** Local reviews and PR reviews keep separate histories, and each round re-checks only its own open findings. So a local review of a branch with an open PR did not re-check findings still open in that PR's review history, including ones a local round had dismissed earlier. When the branch has an open PR on the same base, the local review now re-checks every finding that PR's review still has open (issue, needs-device or noted) and its own history does not.
+- **A local branch review now re-checks what the PR's review left open.** Local reviews and PR reviews keep separate histories, and each round re-checks only its own open findings. So a local review of a branch with an open PR did not re-check findings still open in that PR's review history, including ones a local round had dismissed earlier. When the branch has an open PR on the same base, the local review now re-checks every finding that PR's review still has open (issue, needs-device or noted) and its own history does not. A finding the branch's review dismissed after the PR's review stays dismissed.
 
 ## [1.7.2]
 
