@@ -125,7 +125,10 @@ const openPr = { title: 'PR title', body: 'PR body' };
 assert.deepEqual(reviewDescription(openPr, { title: 'Draft', description: 'Draft body' }), { title: 'PR title', body: 'PR body', descriptionSource: 'pr' });
 assert.deepEqual(reviewDescription(undefined, { title: 'Draft', description: 'Draft body' }), { title: 'Draft', body: 'Draft body', descriptionSource: 'draft' });
 assert.deepEqual(reviewDescription({ title: 'PR title', body: null }, { description: 'Draft body' }), { title: 'PR title', body: 'Draft body', descriptionSource: 'draft' });
-assert.deepEqual(reviewDescription(undefined, {}), { title: '', body: '', descriptionSource: 'none' });
+// A blank PR body or draft (an empty markdown file) is no description either.
+assert.deepEqual(reviewDescription({ title: 'PR title', body: '' }, { description: 'Draft body' }), { title: 'PR title', body: 'Draft body', descriptionSource: 'draft' });
+assert.deepEqual(reviewDescription({ title: 'PR title', body: ' \n' }, { description: '' }), { title: 'PR title', body: '', descriptionSource: 'none' });
+assert.deepEqual(reviewDescription(undefined, {}),{ title: '', body: '', descriptionSource: 'none' });
 assert.deepEqual(reviewDescription(undefined, { title: 'Draft' }), { title: 'Draft', body: '', descriptionSource: 'none' }); // a title alone is not a description
 
 // Earlier local results: the newest few are kept, by finish time, not by file-name order.

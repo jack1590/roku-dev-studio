@@ -192,8 +192,10 @@ export type DescriptionSource = 'pr' | 'draft' | 'none';
 
 /** The title and description a local review reads: the open PR's own win, the caller's draft fills in. */
 export function reviewDescription(pr: { title: string; body: string | null } | undefined, draft: { title?: string; description?: string }): { title: string; body: string; descriptionSource: DescriptionSource } {
-  const descriptionSource: DescriptionSource = pr?.body != null ? 'pr' : draft.description !== undefined ? 'draft' : 'none';
-  return { title: pr?.title ?? draft.title ?? '', body: pr?.body ?? draft.description ?? '', descriptionSource };
+  // A blank body (GitHub can return '') or an empty draft file is no description.
+  const descriptionSource: DescriptionSource = pr?.body?.trim() ? 'pr' : draft.description?.trim() ? 'draft' : 'none';
+  const body = descriptionSource === 'pr' ? pr!.body! : descriptionSource === 'draft' ? draft.description! : '';
+  return { title: pr?.title ?? draft.title ?? '', body, descriptionSource };
 }
 
 /** How many local results per branch are kept under history/, the latest included. */
