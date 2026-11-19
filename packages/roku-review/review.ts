@@ -108,6 +108,8 @@ export interface ReviewResult {
     /** The ticket the review was checked against, or why there was none. */
     ticket?: { key: string; url: string; summary: string; type?: string; status?: string; foundIn: string; figmaLinks: string[] };
     ticketNote?: string;
+    /** Local reviews: whose description the judge read (the open PR's, the caller's draft, or none). */
+    descriptionSource?: 'pr' | 'draft' | 'none';
     /** The PR discussion the judge saw, or why it could not be read. */
     discussion?: { threads: number; resolved: number; replies: number; error?: string };
   };
