@@ -8,6 +8,15 @@ entries up to 1.3.0 are upstream's, and their links point there.
 
 ## [Unreleased]
 
+## [1.9.0]
+
+### Added
+- **A local review can read a draft PR description.** `review_start` with `path` takes `title` and `description`, or `descriptionFile` (an absolute path to a markdown file). Before a PR exists, the judge was told the PR had no description, so a pre-PR review missed findings the PR review then caught. The draft is read as the PR description and searched for the JIRA key. An open PR's own description still wins. `review_get` says which one the review read in `descriptionSource` (`pr`, `draft` or `none`).
+- **Earlier local results are kept.** The last 5 results of each branch are saved under `local/<project>/history/`, beside the latest one, which is unchanged.
+
+### Fixed
+- **A local review now knows the branch's test files.** It told the judge the branch had none, the same as a PR without tests.
+
 ## [1.8.0]
 
 ### Added

@@ -45,6 +45,7 @@ function resultBody(result: ReviewResult) {
     ticket: result.context.ticket ? `${result.context.ticket.key}: ${result.context.ticket.summary}` : (result.context.ticketNote ?? 'none'),
     ...(result.ci ? { ci: result.ci } : {}),
     ...(result.incremental ? { incremental: result.incremental } : {}),
+    ...(result.context.descriptionSource ? { descriptionSource: result.context.descriptionSource } : {}),
   };
 }
 
@@ -54,7 +55,7 @@ export async function reviewRoute(pathname: string, body: Record<string, unknown
     const projectId = str(body.projectId);
     const localPath = str(body.path);
     if (localPath) {
-      const started = await startLocalReview({ path: localPath, base: str(body.base), projectId, full: body.full === true });
+      const started = await startLocalReview({ path: localPath, base: str(body.base), projectId, full: body.full === true, title: str(body.title), description: str(body.description), descriptionFile: str(body.descriptionFile) });
       return started.success ? { status: 200, body: { jobId: started.jobId, status: statusBody(started.jobId, started.summary) } } : { status: 400, body: { error: started.error } };
     }
     const repo = str(body.repo);

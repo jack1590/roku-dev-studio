@@ -4,6 +4,8 @@
  * reads (with the comment text that would actually post). No Electron, no file access.
  */
 
+import { isAbsolute } from 'path';
+
 const REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 export type ReviewJobId =
@@ -168,4 +170,37 @@ export function prOnlyOpen<T extends { id: string; status: string; ci?: unknown 
   const ownNewer = !!own && own.finishedAt > pr.finishedAt;
   const ownHas = new Set((own?.findings ?? []).filter((f) => !f.ci && (f.status !== 'dismissed' || ownNewer)).map((f) => f.id));
   return pr.findings.filter((f) => f.status !== 'dismissed' && !f.ci && !ownHas.has(f.id));
+}
+
+/**
+ * The draft title and description a local review reads when there is no PR description yet:
+ * `description` as given, or the markdown file at the absolute path `descriptionFile`.
+ */
+export function readDraft(input: { title?: string; description?: string; descriptionFile?: string }, readFile: (absPath: string) => string): { ok: true; title?: string; description?: string } | { ok: false; error: string } {
+  if (input.description !== undefined && input.descriptionFile !== undefined) return { ok: false, error: 'Pass description or descriptionFile, not both.' };
+  const title = input.title !== undefined ? { title: input.title } : {};
+  if (input.descriptionFile === undefined) return { ok: true, ...title, ...(input.description !== undefined ? { description: input.description } : {}) };
+  if (!isAbsolute(input.descriptionFile)) return { ok: false, error: 'descriptionFile must be an absolute path to a markdown file.' };
+  try {
+    return { ok: true, ...title, description: readFile(input.descriptionFile) };
+  } catch (err) {
+    return { ok: false, error: `Could not read descriptionFile ${input.descriptionFile}: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
+export type DescriptionSource = 'pr' | 'draft' | 'none';
+
+/** The title and description a local review reads: the open PR's own win, the caller's draft fills in. */
+export function reviewDescription(pr: { title: string; body: string | null } | undefined, draft: { title?: string; description?: string }): { title: string; body: string; descriptionSource: DescriptionSource } {
+  const descriptionSource: DescriptionSource = pr?.body != null ? 'pr' : draft.description !== undefined ? 'draft' : 'none';
+  return { title: pr?.title ?? draft.title ?? '', body: pr?.body ?? draft.description ?? '', descriptionSource };
+}
+
+/** How many local results per branch are kept under history/, the latest included. */
+export const LOCAL_HISTORY = 5;
+
+/** The saved local results (`<finishedAt>.json`) past the newest `keep`, oldest first: the ones to delete. */
+export function olderLocalResults(names: string[], keep: number): string[] {
+  const results = names.filter((n) => /^\d+\.json$/.test(n)).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  return results.slice(0, Math.max(0, results.length - keep));
 }

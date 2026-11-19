@@ -1,6 +1,6 @@
 /** Pins the review MCP helpers: job ids, project lookup, remotes, the draft view. Run with `npm run verify:review-mcp`. */
 import assert from 'node:assert/strict';
-import { checkPostRequest, draftView, encodeJobId, LOCAL_REVIEW_VERSION, parseGitHubRemote, parseJobId, prOnlyOpen, resolveProject, reusableLocalReview, reviewSince } from '../shared/review-mcp.js';
+import { checkPostRequest, draftView, encodeJobId, LOCAL_REVIEW_VERSION, olderLocalResults, parseGitHubRemote, parseJobId, prOnlyOpen, readDraft, resolveProject, reusableLocalReview, reviewDescription, reviewSince } from '../shared/review-mcp.js';
 
 assert.equal(encodeJobId({ kind: 'pr', projectId: 'acme', repo: 'o/r', number: 12 }), 'pr:acme:o/r#12');
 assert.equal(encodeJobId({ kind: 'local', projectId: 'acme', repo: 'o/r', branch: 'feat/x' }), 'local:acme:o/r:feat/x');
@@ -104,5 +104,32 @@ assert.deepEqual(prOnlyOpen(undefined, prReview).map((f) => f.id), ['a', 'b', 'c
 assert.deepEqual(prOnlyOpen({ findings: own, finishedAt: 1000 }, undefined), []);
 // The branch's judge dismissed b after the PR review: that newer ruling stands, so b is not brought back.
 assert.deepEqual(prOnlyOpen({ findings: own, finishedAt: 3000 }, prReview).map((f) => f.id), ['c']);
+
+// A local review before the PR exists reads a draft title and description, inline or from a markdown file.
+const files: Record<string, string> = { '/abs/draft.md': '# Fix\n\nPLAY-42: captions' };
+const reader = (p: string) => {
+  if (!(p in files)) throw new Error(`ENOENT: no such file or directory, open '${p}'`);
+  return files[p];
+};
+assert.deepEqual(readDraft({}, reader), { ok: true });
+assert.deepEqual(readDraft({ title: 'T', description: 'D' }, reader), { ok: true, title: 'T', description: 'D' });
+assert.deepEqual(readDraft({ title: 'T', descriptionFile: '/abs/draft.md' }, reader), { ok: true, title: 'T', description: '# Fix\n\nPLAY-42: captions' });
+assert.match((readDraft({ descriptionFile: 'draft.md' }, reader) as { error: string }).error, /descriptionFile must be an absolute path/);
+const unreadable = readDraft({ descriptionFile: '/abs/missing.md' }, reader) as { ok: boolean; error: string };
+assert.equal(unreadable.ok, false);
+assert.match(unreadable.error, /\/abs\/missing\.md/);
+assert.match((readDraft({ description: 'D', descriptionFile: '/abs/draft.md' }, reader) as { error: string }).error, /not both/);
+
+// The open PR's own title and description win; the draft fills in when there is no PR or it has no description.
+const openPr = { title: 'PR title', body: 'PR body' };
+assert.deepEqual(reviewDescription(openPr, { title: 'Draft', description: 'Draft body' }), { title: 'PR title', body: 'PR body', descriptionSource: 'pr' });
+assert.deepEqual(reviewDescription(undefined, { title: 'Draft', description: 'Draft body' }), { title: 'Draft', body: 'Draft body', descriptionSource: 'draft' });
+assert.deepEqual(reviewDescription({ title: 'PR title', body: null }, { description: 'Draft body' }), { title: 'PR title', body: 'Draft body', descriptionSource: 'draft' });
+assert.deepEqual(reviewDescription(undefined, {}), { title: '', body: '', descriptionSource: 'none' });
+assert.deepEqual(reviewDescription(undefined, { title: 'Draft' }), { title: 'Draft', body: '', descriptionSource: 'none' }); // a title alone is not a description
+
+// Earlier local results: the newest few are kept, by finish time, not by file-name order.
+assert.deepEqual(olderLocalResults(['999.json', '1000.json', '1001.json', 'notes.txt'], 2), ['999.json']);
+assert.deepEqual(olderLocalResults(['1.json', '2.json'], 5), []);
 
 console.log('verify-review-mcp: ok');

@@ -4,17 +4,19 @@
  * - Committed work only: the review reads a copy at HEAD (see `prepareLocalCheckout`), never the
  *   user's folder, so uncommitted edits stay out.
  * - Same pipeline as a PR review, minus the device step. When the branch has an open PR, the review
- *   reads what a PR review reads: its base, description, discussion and CI. Without one, JIRA comes
- *   from the branch name only.
+ *   reads what a PR review reads: its base, description, discussion and CI. Without one (or when it
+ *   has no description), the caller's draft title and description stand in, for the judge and for
+ *   the JIRA lookup; else JIRA comes from the branch name only.
  * - Kept per branch, apart from PR reviews (not in the PR list, never posted). A second review of
  *   the same branch and base re-checks the open findings and reviews only the new commits, like a PR
  *   re-review. Another base starts clean. Findings the open PR's own review left open are re-checked
- *   as well, since the two keep separate histories.
+ *   as well, since the two keep separate histories. The last few earlier results are kept beside the
+ *   latest, under `history/`.
  */
 
 import { agentBackendFor } from './claude-code';
-import { budgetDiff, ciPromptBlock, countFindings, discussionPromptBlock, dismissalPromptBlock, fetchCi, fetchDiscussion, fileInventory, lookupTicket, prepareLocalCheckout, readChangedFiles, readStandards, removeLocalCheckout, runReview, ticketPromptBlock, type ReviewResult } from 'roku-dev-studio-review';
-import { encodeJobId, LOCAL_REVIEW_VERSION, parseGitHubRemote, prOnlyOpen, resolveProject, reusableLocalReview, reviewSince } from '../../shared/review-mcp';
+import { budgetDiff, ciPromptBlock, countFindings, discussionPromptBlock, dismissalPromptBlock, fetchCi, fetchDiscussion, fileInventory, lookupTicket, prepareLocalCheckout, readChangedFiles, readStandards, removeLocalCheckout, runReview, TEST_FILE, ticketPromptBlock, type ReviewResult } from 'roku-dev-studio-review';
+import { encodeJobId, LOCAL_HISTORY, LOCAL_REVIEW_VERSION, olderLocalResults, parseGitHubRemote, prOnlyOpen, readDraft, resolveProject, reusableLocalReview, reviewDescription, reviewSince } from '../../shared/review-mcp';
 import { getProjectRecord, listProjectRecords } from '../ipc/project-handlers';
 import * as tokenStore from '../project-token-store';
 import { loadDismissals } from './review-dismissals';
@@ -68,7 +70,9 @@ interface OpenPr {
 const jobs = new Map<string, LocalSummary>();
 
 const slug = (s: string) => s.replace(/[^A-Za-z0-9_.-]/g, '_');
-const storedPath = (projectId: string, repo: string, branch: string) => path.join(reviewDataDir(), 'local', slug(projectId), `${repo.replace('/', '__')}__${slug(branch)}.json`);
+const storedName = (repo: string, branch: string) => `${repo.replace('/', '__')}__${slug(branch)}`;
+const storedPath = (projectId: string, repo: string, branch: string) => path.join(reviewDataDir(), 'local', slug(projectId), `${storedName(repo, branch)}.json`);
+const historyDir = (projectId: string, repo: string, branch: string) => path.join(reviewDataDir(), 'local', slug(projectId), 'history', storedName(repo, branch));
 
 function readStoredLocal(projectId: string, repo: string, branch: string): StoredLocal | null {
   try {
@@ -83,8 +87,10 @@ function gitOut(args: string[], cwd: string): Promise<string> {
 }
 
 /** Start a review of the branch checked out at `input.path` (or return the one already running). */
-export async function startLocalReview(input: { path: string; base?: string; projectId?: string; full?: boolean }): Promise<{ success: true; jobId: string; summary: LocalSummary } | { success: false; error: string }> {
+export async function startLocalReview(input: { path: string; base?: string; projectId?: string; full?: boolean; title?: string; description?: string; descriptionFile?: string }): Promise<{ success: true; jobId: string; summary: LocalSummary } | { success: false; error: string }> {
   if (!input.path || !path.isAbsolute(input.path) || !fs.existsSync(input.path)) return { success: false, error: 'path must be an absolute path to a git checkout.' };
+  const draft = readDraft(input, (file) => fs.readFileSync(file, 'utf-8'));
+  if (!draft.ok) return { success: false, error: draft.error };
   const url = await gitOut(['remote', 'get-url', 'origin'], input.path).catch(() => '');
   if (!url) return { success: false, error: `${input.path} is not a git checkout with an origin remote.` };
   // Never echo the URL: it can carry credentials (https://user:token@github.com/...).
@@ -103,7 +109,7 @@ export async function startLocalReview(input: { path: string; base?: string; pro
   jobs.set(jobId, job);
   mainLog(`[reviews] start local ${repo}@${branch}`);
   // ponytail: local jobs run unqueued; add a cap if agents start many at once.
-  void executeLocal(job, input.path, input.base, input.full === true).catch((err: unknown) => {
+  void executeLocal(job, input.path, input.base, input.full === true, draft).catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
     mainWarn(`[reviews] local ${repo}@${branch} failed: ${message}`);
     Object.assign(job, { status: 'failed', phase: undefined, detail: undefined, error: message });
@@ -131,7 +137,7 @@ async function openPrsFor(token: string, repo: string, branch: string): Promise<
   });
 }
 
-async function executeLocal(job: LocalSummary, checkoutPath: string, base: string | undefined, fullReview: boolean): Promise<void> {
+async function executeLocal(job: LocalSummary, checkoutPath: string, base: string | undefined, fullReview: boolean, draft: { title?: string; description?: string }): Promise<void> {
   const update = (patch: Partial<LocalSummary>) => Object.assign(job, patch);
   const project = getProjectRecord(job.projectId);
   if (!project) throw new Error('Project not found.');
@@ -163,6 +169,7 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base: strin
     const about = { baseNotes, baseStale: checkout.baseStale };
     const full = budgetDiff(checkout.diff);
     const branchFiles = full.files.map((f) => f.path);
+    const described = reviewDescription(pr, draft);
     const incremental = sinceSha !== undefined && checkout.sinceDiff !== undefined && previous ? { sinceSha, diff: budgetDiff(checkout.sinceDiff) } : undefined;
     const budgeted = incremental?.diff ?? full;
     const changedFiles = budgeted.files.map((f) => f.path);
@@ -197,7 +204,7 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base: strin
     const files = await readChangedFiles(checkout.worktree, changedFiles);
     update({ detail: pr ? 'reading CI checks, the JIRA ticket and the PR discussion' : 'reading the JIRA ticket' });
     const [ticket, ci, discussion] = await Promise.all([
-      lookupTicket({ site: project.jiraSite, email: project.jiraEmail, token: tokenStore.getToken(project.id, 'jira'), pr: { title: pr?.title ?? '', body: pr?.body ?? '', branch: job.branch } }).catch((err: unknown) => ({
+      lookupTicket({ site: project.jiraSite, email: project.jiraEmail, token: tokenStore.getToken(project.id, 'jira'), pr: { title: described.title, body: described.body, branch: job.branch } }).catch((err: unknown) => ({
         ticket: null,
         note: `Could not read JIRA (${err instanceof Error ? err.message : String(err)}).`,
       })),
@@ -215,8 +222,8 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base: strin
       ctx: {
         repo: job.repo,
         prNumber: pr?.number ?? 0,
-        title: pr?.title ?? '',
-        body: pr?.body ?? '',
+        title: described.title,
+        body: described.body,
         author: pr?.user?.login ?? checkout.author,
         baseRef: checkout.baseRef,
         headRef: job.branch,
@@ -232,7 +239,7 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base: strin
         ticketBlock: ticketPromptBlock(ticket),
         dismissedBlock: dismissalPromptBlock(dismissals),
         ...(discussion ? { discussionBlock: discussionPromptBlock(discussion) } : {}),
-        prTests: [],
+        prTests: branchFiles.filter((f) => TEST_FILE.test(f)),
       },
       worktree: checkout.worktree,
       headSha: checkout.headSha,
@@ -250,7 +257,7 @@ async function executeLocal(job: LocalSummary, checkoutPath: string, base: strin
           : {}),
     });
     const severalPrs = prs.length > 1 ? [`This branch has ${prs.length} open PRs; the review read #${pr.number} only.`] : [];
-    save(job, checkout.baseRef, { ...about, baseNotes: [...baseNotes, ...severalPrs], ...(pr ? { pullRequest: pr.number } : {}) }, result);
+    save(job, checkout.baseRef, { ...about, baseNotes: [...baseNotes, ...severalPrs], ...(pr ? { pullRequest: pr.number } : {}) }, { ...result, context: { ...result.context, descriptionSource: described.descriptionSource } });
   } finally {
     await removeLocalCheckout(checkout.worktree);
   }
@@ -261,5 +268,14 @@ function save(job: LocalSummary, base: string, about: Pick<StoredLocal, 'baseNot
   const file = storedPath(job.projectId, job.repo, job.branch);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(stored, null, 2), 'utf-8');
+  // The latest stays at `file` (what the next review builds on); the newest few also stay under history/.
+  try {
+    const history = historyDir(job.projectId, job.repo, job.branch);
+    fs.mkdirSync(history, { recursive: true });
+    fs.writeFileSync(path.join(history, `${result.finishedAt}.json`), JSON.stringify(stored), 'utf-8');
+    for (const old of olderLocalResults(fs.readdirSync(history), LOCAL_HISTORY)) fs.rmSync(path.join(history, old), { force: true });
+  } catch (err) {
+    mainWarn(`[reviews] could not keep the earlier local result of ${job.repo}@${job.branch}: ${err instanceof Error ? err.message : String(err)}`);
+  }
   Object.assign(job, { status: 'done', phase: undefined, detail: undefined, base, headSha: result.headSha, counts: result.counts, finishedAt: result.finishedAt, lostLenses: result.lostLenses });
 }
